@@ -1,4 +1,4 @@
-// Modèle de données — miroir exact du schéma Supabase (supabase/migrations)
+// Modèle de données — miroir exact du schéma Postgres (db/migrations)
 
 export type UUID = string
 export type ISODate = string // YYYY-MM-DD

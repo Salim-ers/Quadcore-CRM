@@ -1,0 +1,6 @@
+[
+  { "first_name": "Salim", "last_name": "EL RHALMANI", "email": "salim.elr@quad-core.fr", "role": "admin", "color": "#AA543D" },
+  { "first_name": "Hasan", "last_name": "AKAR", "email": "hasan.akar@quad-core.fr", "role": "admin", "color": "#2F6B5E" },
+  { "first_name": "Sadish", "last_name": "AROUL", "email": "alphonse.aroul@quad-core.fr", "role": "admin", "color": "#3D5A80" },
+  { "first_name": "Moustakine", "last_name": "MOUHAMAD", "email": "moustakine.mouhamad@quad-core.fr", "role": "admin", "color": "#8A6A2F" }
+]

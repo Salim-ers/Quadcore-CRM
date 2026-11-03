@@ -1,15 +1,15 @@
 -- ═══════════════════════════════════════════════════════════════════════
 --  QUADCORE — schéma complet
---  À exécuter une fois dans Supabase › SQL Editor (ou `supabase db push`).
---  Contenu : tables, contraintes, RLS, historique + activité automatiques
---  (triggers), temps réel, stockage des fichiers.
+--  Appliqué par `npm run neon:installer`, une fois la Data API activée
+--  (c'est elle qui fournit auth.uid() et le rôle authenticated).
+--  Contenu : tables, contraintes, RLS, historique + activité automatiques (triggers).
 -- ═══════════════════════════════════════════════════════════════════════
 
-create extension if not exists pgcrypto;
-
--- ───────────────────────── Profils (1 par compte Supabase Auth) ─────────
+-- ───────────────────────── Profils (1 par compte Neon Auth) ─────────────
+-- id = neon_auth.user.id. Un compte sans profil actif n'a accès à rien : les profils
+-- sont créés par l'installation et par « Inviter », jamais à l'inscription.
 create table public.profiles (
-  id          uuid primary key references auth.users(id) on delete cascade,
+  id          uuid primary key,
   email       text not null,
   first_name  text not null default '',
   last_name   text not null default '',
@@ -31,37 +31,11 @@ language sql stable security definer set search_path = public as $$
   select exists (select 1 from profiles where id = auth.uid() and active and role = 'admin')
 $$;
 
--- Création automatique du profil à l'inscription / l'invitation.
--- Le tout premier compte devient administrateur ; les suivants sont collaborateurs
--- (le rôle n'est jamais lu depuis les métadonnées saisies par l'utilisateur).
-create or replace function public.handle_new_user() returns trigger
-language plpgsql security definer set search_path = public as $$
-declare
-  palette text[] := array['#AA543D','#2F6B5E','#3D5A80','#8A6A2F','#6B4E3D','#52606D'];
-  n int;
-begin
-  select count(*) into n from profiles;
-  insert into profiles (id, email, first_name, last_name, role, color)
-  values (
-    new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data->>'first_name', split_part(new.email, '@', 1)),
-    coalesce(new.raw_user_meta_data->>'last_name', ''),
-    case when n = 0 then 'admin' else 'member' end,
-    palette[(n % array_length(palette, 1)) + 1]
-  );
-  return new;
-end $$;
-
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.handle_new_user();
-
 -- Un collaborateur ne peut ni changer son rôle ni se désactiver ; on garde toujours un admin.
 create or replace function public.guard_profile() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  -- auth.uid() nul = contexte serveur de confiance (service role, SQL editor) : aucune politique RLS n'autorise l'anonyme
+  -- auth.uid() nul = contexte serveur de confiance (script d'installation, SQL Editor) : aucune politique RLS n'autorise l'anonyme
   if (new.role is distinct from old.role or new.active is distinct from old.active) and auth.uid() is not null and not is_admin() then
     raise exception 'Seul un administrateur peut modifier les rôles et les accès';
   end if;
@@ -364,6 +338,7 @@ alter table public.activities     enable row level security;
 create policy "membres lisent les profils" on public.profiles for select using (is_member() or id = auth.uid());
 create policy "chacun modifie son profil, l'admin tous" on public.profiles for update
   using (id = auth.uid() or is_admin()) with check (id = auth.uid() or is_admin());
+create policy "admin invite" on public.profiles for insert with check (is_admin());
 
 do $$
 declare t text;
@@ -393,20 +368,3 @@ create policy "auteur ou admin supprime" on public.attachments for delete using 
 -- Historique et activité : lecture seule (écrits uniquement par les triggers)
 create policy "membres lisent" on public.status_history for select using (is_member());
 create policy "membres lisent" on public.activities     for select using (is_member());
-
--- ═══════════════════════════ Temps réel ═════════════════════════════════
-alter publication supabase_realtime add table
-  public.profiles, public.prospects, public.projects, public.revisions, public.tasks,
-  public.comments, public.attachments, public.status_history, public.activities;
-
--- ═══════════════════════════ Stockage des fichiers ══════════════════════
-insert into storage.buckets (id, name, public, file_size_limit)
-values ('attachments', 'attachments', false, 20971520)
-on conflict (id) do nothing;
-
-create policy "membres lisent les fichiers" on storage.objects for select
-  using (bucket_id = 'attachments' and public.is_member());
-create policy "membres déposent des fichiers" on storage.objects for insert
-  with check (bucket_id = 'attachments' and public.is_member());
-create policy "auteur ou admin supprime les fichiers" on storage.objects for delete
-  using (bucket_id = 'attachments' and (owner = auth.uid() or public.is_admin()));

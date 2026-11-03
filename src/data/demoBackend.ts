@@ -1,6 +1,6 @@
 /**
  * Mode démo : base locale (localStorage) qui reproduit fidèlement le comportement
- * du schéma Supabase — valeurs par défaut, garde-fous d'archivage, historique des
+ * du schéma Postgres — valeurs par défaut, garde-fous d'archivage, historique des
  * statuts et fil d'activité générés « par trigger ». Les onglets ouverts se
  * synchronisent entre eux (BroadcastChannel) pour simuler le temps réel.
  */
@@ -162,7 +162,7 @@ export class DemoEngine {
     if (kind) for (const t of ['comments', 'attachments', 'status_history'] as const) cascade(t, (r) => r.entity_type === kind && r.entity_id === id)
   }
 
-  // ———————————————— « triggers » (miroir de supabase/migrations) ————————————————
+  // ———————————————— « triggers » (miroir de db/migrations) ————————————————
   private afterInsert(table: TableName, r: AnyRow) {
     if (table === 'tickets') {
       const client = this.table('prospects').find((x) => x.id === r.prospect_id)
@@ -310,6 +310,7 @@ export function createDemoBackend(): Backend {
     async sendPasswordReset() { /* démo */ },
     async updatePassword() { /* démo */ },
     needsPasswordSetup: () => false,
+    cancelPasswordSetup() { /* démo */ },
 
     async loadAll() { return clone(engine.db) },
     insert: <T extends TableName>(table: T, row: Partial<Row<T>>) =>
@@ -337,15 +338,15 @@ export function createDemoBackend(): Backend {
         if (engine.db.profiles.some((p) => p.email.toLowerCase() === input.email.toLowerCase()))
           throw new Error('Ce collaborateur fait déjà partie de l’équipe.')
         if (!engine.isAdmin()) throw new Error('Réservé aux administrateurs.')
-        const colors = ['#AA543D', '#2F6B5E', '#3D5A80', '#8A6A2F', '#6B4E3D', '#52606D']
         const p: Profile = {
           id: uuid(), email: input.email.trim().toLowerCase(), first_name: input.first_name, last_name: input.last_name,
-          avatar_url: null, role: input.role, color: colors[engine.db.profiles.length % colors.length], active: true, created_at: engine.now(),
+          avatar_url: null, role: input.role, color: input.color, active: true, created_at: engine.now(),
         }
         engine.table('profiles').push(p as unknown as AnyRow)
         engine.emit('profiles', 'INSERT', p as unknown as AnyRow)
       })
     },
+    async syncAuthRole() { /* démo : un seul système de rôles */ },
     demoAccounts: () => clone(engine.db.profiles.filter((p) => p.active)),
   }
 }

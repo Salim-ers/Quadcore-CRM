@@ -4,4 +4,5 @@ dist-demo
 .env.local
 .env
 *.tsbuildinfo
-supabase/.temp
+.env.*.local
+.neon

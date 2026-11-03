@@ -4,15 +4,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 
 // Modes :
-//  - default        : application réelle (Supabase), PWA installable
+//  - default        : application réelle (Neon), PWA installable
 //  - demo-single    : aperçu autonome en un seul fichier HTML (données de démo locales)
 export default defineConfig(({ mode, command }) => {
   const single = mode === 'demo-single'
   const env = loadEnv(mode, process.cwd(), '')
-  // Sans Supabase, l'app bascule en démo et chaque navigateur garde ses données dans son coin :
+  // Sans Neon, l'app bascule en démo et chaque navigateur garde ses données dans son coin :
   // une mise en ligne mal configurée doit échouer au lieu de faire perdre des saisies réelles.
-  if (command === 'build' && !single && env.VITE_DEMO !== '1' && !(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY)) {
-    throw new Error('VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont requis pour la version en ligne (voir .env.example). Pour un aperçu : npm run build:demo')
+  if (command === 'build' && !single && env.VITE_DEMO !== '1' && !(env.VITE_NEON_DATA_API_URL && env.VITE_NEON_FILES_URL)) {
+    throw new Error('VITE_NEON_DATA_API_URL et VITE_NEON_FILES_URL sont requises pour la version en ligne (voir .env.example). Pour un aperçu : npm run build:demo')
   }
   return {
     define: {
@@ -21,6 +21,10 @@ export default defineConfig(({ mode, command }) => {
     build: single
       ? { outDir: 'dist-demo', assetsInlineLimit: 100_000_000, cssCodeSplit: false }
       : { outDir: 'dist', sourcemap: false },
+    // En local comme en ligne (functions/api/auth), l'authentification passe par le domaine de l'app
+    server: env.NEON_AUTH_URL ? {
+      proxy: { '/api/auth': { target: env.NEON_AUTH_URL.replace(/\/$/, ''), changeOrigin: true, rewrite: (path) => path.replace(/^\/api\/auth/, '') } },
+    } : undefined,
     plugins: [
       react(),
       single
@@ -52,6 +56,8 @@ export default defineConfig(({ mode, command }) => {
             },
             workbox: {
               navigateFallback: '/index.html',
+              // la session ne doit jamais venir d'un cache
+              navigateFallbackDenylist: [/^\/api\//],
               globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
             },
           }),

@@ -1,6 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════
---  QUADCORE — suivi clients : tickets, journal des échanges, comptes fermés
---  À exécuter après 0001_quadcore.sql.
+--  QUADCORE — suivi clients : tickets, journal des échanges
 -- ═══════════════════════════════════════════════════════════════════════
 
 -- ───────────────────────── Tickets ──────────────────────────────────────
@@ -142,36 +141,9 @@ create trigger revisions_purge after delete on public.revisions for each row exe
 create trigger tasks_purge     after delete on public.tasks     for each row execute function purge_entity('task');
 create trigger tickets_purge   after delete on public.tickets   for each row execute function purge_entity('ticket');
 
--- ═══════════════════════════ Comptes fermés par défaut ══════════════════
--- Seul le tout premier compte est actif d'office. Les suivants n'ont accès à rien tant
--- que la fonction invite-member ou un administrateur ne les a pas activés : si les
--- inscriptions publiques restaient ouvertes par erreur, un inconnu ne verrait aucune donnée.
-create or replace function public.handle_new_user() returns trigger
-language plpgsql security definer set search_path = public as $$
-declare
-  palette text[] := array['#AA543D','#2F6B5E','#3D5A80','#8A6A2F','#6B4E3D','#52606D'];
-  n int;
-begin
-  select count(*) into n from profiles;
-  insert into profiles (id, email, first_name, last_name, role, color, active)
-  values (
-    new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data->>'first_name', split_part(new.email, '@', 1)),
-    coalesce(new.raw_user_meta_data->>'last_name', ''),
-    case when n = 0 then 'admin' else 'member' end,
-    palette[(n % array_length(palette, 1)) + 1],
-    n = 0
-  );
-  return new;
-end $$;
-
 -- ═══════════════════════════ Row Level Security ═════════════════════════
 alter table public.tickets enable row level security;
 create policy "membres lisent" on public.tickets for select using (is_member());
 create policy "membres créent" on public.tickets for insert with check (is_member());
 create policy "membres modifient" on public.tickets for update using (is_member()) with check (is_member());
 create policy "admin supprime" on public.tickets for delete using (is_admin());
-
--- ═══════════════════════════ Temps réel ═════════════════════════════════
-alter publication supabase_realtime add table public.tickets;

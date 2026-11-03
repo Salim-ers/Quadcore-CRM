@@ -143,7 +143,7 @@ export function TeamPage() {
             )}
             <button className="btn-soft text-danger" onClick={() => backend.signOut()}><LogOut size={17} />Se déconnecter</button>
           </div>
-          <p className="text-[12px] text-faint text-center mt-6">QUADCORE · v1.0 · {backend.mode === 'demo' ? 'mode démonstration' : 'connecté à Supabase'}</p>
+          <p className="text-[12px] text-faint text-center mt-6">QUADCORE · v1.0 · {backend.mode === 'demo' ? 'mode démonstration' : 'connecté à Neon'}</p>
         </Section>
       </Page>
 
@@ -199,22 +199,22 @@ function InviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
   const profiles = useStore((s) => s.db.profiles)
   useEffect(() => { if (open) { setEmail(''); setFirst(''); setLast(''); setRole('member') } }, [open])
   const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())
-  const missing = TEAM_ROSTER.filter((r) => !profiles.some((p) => p.first_name === r.first_name && p.last_name === r.last_name))
+  const missing = TEAM_ROSTER.filter((r) => !profiles.some((p) => p.email.toLowerCase() === r.email))
   return (
     <Sheet open={open} onClose={onClose} title="Inviter un collaborateur" size="sm"
       footer={<button className="btn-primary w-full" disabled={!valid || busy} onClick={async () => {
         setBusy(true)
-        try { await backend.inviteMember({ email: email.trim(), first_name: first.trim(), last_name: last.trim(), role }); toast(backend.mode === 'demo' ? 'Collaborateur ajouté (démo)' : `Invitation envoyée à ${email.trim()}`, 'success'); onClose() }
+        try { await backend.inviteMember({ email: email.trim(), first_name: first.trim(), last_name: last.trim(), role, color: MEMBER_COLORS[profiles.length % MEMBER_COLORS.length] }); toast(backend.mode === 'demo' ? 'Collaborateur ajouté (démo)' : `Invitation envoyée à ${email.trim()}`, 'success'); onClose() }
         catch (e) { toast((e as Error).message, 'error') }
         setBusy(false)
       }}><Mail size={17} />Envoyer l’invitation</button>}>
       <div className="flex flex-col gap-4">
-        <p className="text-[13.5px] text-muted">Un e-mail lui permettra de choisir son mot de passe et d’accéder à QUADCORE.</p>
+        <p className="text-[13.5px] text-muted">Un e-mail lui permettra de choisir son mot de passe et d’accéder à QUADCORE. Le lien est valable 15 minutes ; ensuite, « Mot de passe oublié » en envoie un nouveau.</p>
         {missing.length > 0 && (
           <div className="flex gap-2 flex-wrap">
             {missing.map((r) => (
-              <button key={r.first_name} type="button" onClick={() => { setFirst(r.first_name); setLast(r.last_name) }}
-                className={cx('chip', first === r.first_name && last === r.last_name && 'chip-on')}>{r.first_name} {r.last_name}</button>
+              <button key={r.email} type="button" onClick={() => { setFirst(r.first_name); setLast(r.last_name); setEmail(r.email); setRole(r.role) }}
+                className={cx('chip', email === r.email && 'chip-on')}>{r.first_name} {r.last_name}</button>
             ))}
           </div>
         )}
@@ -223,12 +223,13 @@ function InviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
           <Field label="Prénom"><Input value={first} onChange={(e) => setFirst(e.target.value)} /></Field>
           <Field label="Nom"><Input value={last} onChange={(e) => setLast(e.target.value)} /></Field>
         </div>
-        <Field label="Rôle">
+        <div>
+          <span className="field-label">Rôle</span>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setRole('member')} className={cx('chip h-11 justify-center', role === 'member' && 'chip-on')}>Collaborateur</button>
             <button type="button" onClick={() => setRole('admin')} className={cx('chip h-11 justify-center', role === 'admin' && 'chip-on')}>Administrateur</button>
           </div>
-        </Field>
+        </div>
       </div>
     </Sheet>
   )
@@ -242,13 +243,18 @@ function MemberSheet({ member, onClose }: { member: Profile | null; onClose: () 
       {p && (
         <div className="flex flex-col gap-4">
           <p className="text-[13.5px] text-muted">{p.email}</p>
-          <Field label="Rôle">
+          <div>
+            <span className="field-label">Rôle</span>
             <div className="grid grid-cols-2 gap-2">
               {(['member', 'admin'] as const).map((r) => (
-                <button key={r} onClick={() => updateRow('profiles', p.id, { role: r })} className={cx('chip h-11 justify-center', p.role === r && 'chip-on')}>{r === 'admin' ? 'Administrateur' : 'Collaborateur'}</button>
+                <button key={r} onClick={async () => {
+                  if (!await updateRow('profiles', p.id, { role: r })) return
+                  // sans cela, un nouvel administrateur ne pourrait pas inviter
+                  backend.syncAuthRole(p.id, r).catch((e) => toast((e as Error).message, 'error'))
+                }} className={cx('chip h-11 justify-center', p.role === r && 'chip-on')}>{r === 'admin' ? 'Administrateur' : 'Collaborateur'}</button>
               ))}
             </div>
-          </Field>
+          </div>
           <div className="text-[13px] text-muted leading-relaxed bg-sunken rounded-xl p-3">
             <b className="text-ink">Administrateur :</b> gère les membres, les paramètres et l’archivage.<br />
             <b className="text-ink">Collaborateur :</b> crée et modifie prospects, projets, tâches, commentaires et documents.

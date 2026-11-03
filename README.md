@@ -3,7 +3,7 @@
 Outil interne de QUADCORE : prospection, suivi des clients par tickets, production des sites web.
 Il est pensé d'abord pour le téléphone, s'installe comme une application (PWA) et est partagé entre les quatre associés : Salim EL RHALMANI, Hasan AKAR, Sadish AROUL et Moustakine MOUHAMAD.
 
-**Stack :** React 18 + TypeScript, Vite, Tailwind CSS, Supabase (Auth, Postgres, Realtime, Storage), Lucide.
+**Stack :** React 18 + TypeScript, Vite, Tailwind CSS, Neon (Postgres, Managed Better Auth, Data API, Functions, Object Storage), Cloudflare Pages, Lucide.
 
 ---
 
@@ -25,78 +25,82 @@ Il est pensé d'abord pour le téléphone, s'installe comme une application (PWA
 - Il n'y a pas de serveur de push. Les rappels se déclenchent donc quand l'application est ouverte ou en arrière-plan, pas quand elle est complètement fermée.
 - Sur iPhone, il faut d'abord installer l'app sur l'écran d'accueil (iOS 16.4 ou plus récent).
 
+**Travail à plusieurs.** Chaque appareil ouvert récupère le travail des autres toutes les 10 secondes, et tout est rechargé au retour sur l'application.
+
 **Hors ligne.** L'application s'ouvre sans réseau, mais les modifications ne sont pas mises en attente : elles échouent avec un message et il faut les refaire au retour du réseau.
 
-## 2. Mise en ligne pour l'équipe
+## 2. Mise en ligne
 
-Il faut les adresses e-mail des quatre associés, puis trois comptes gratuits : Supabase (base de données), un service d'envoi d'e-mails et un hébergeur.
+Il faut un compte [Neon](https://neon.com) et un compte [Cloudflare](https://dash.cloudflare.com). Les comptes des quatre associés sont déjà décrits dans `src/lib/team.json`.
 
-### a. Supabase
-1. Créez un projet sur [supabase.com](https://supabase.com), région Europe (Paris ou Francfort).
-2. Dans **Authentication › Sign In / Providers**, **désactivez « Allow new users to sign up »**.
-3. Dans **SQL Editor**, exécutez dans l'ordre `supabase/migrations/0001_quadcore.sql` puis `supabase/migrations/0002_suivi_clients.sql`. Ils créent les tables, la RLS, les triggers d'historique et d'activité, le temps réel et le bucket de fichiers.
-4. Créez le compte de Salim, qui sera **administrateur** : **Authentication › Users › Add user**, e-mail et mot de passe, *Auto confirm* coché. Le tout premier compte reçoit automatiquement ce rôle, et c'est le seul à être actif d'office.
-
-### b. Envoi des e-mails (obligatoire)
-Sans service d'envoi, Supabase n'écrit qu'aux membres de son organisation et se limite à 2 e-mails par heure : ni les invitations ni « mot de passe oublié » ne fonctionneraient.
-1. Créez un compte sur un service SMTP ([Resend](https://resend.com) par exemple, gratuit jusqu'à 3 000 e-mails par mois) et vérifiez-y le domaine `quad-core.fr`.
-2. Renseignez-le dans **Authentication › Emails › SMTP Settings**, sans suivi des liens côté service d'envoi.
-
-### c. Hébergement
-[Cloudflare Pages](https://pages.cloudflare.com) est recommandé : l'offre Vercel Hobby est réservée à un usage non commercial.
-1. Importez le dépôt. Commande de build `npm run build`, dossier de sortie `dist`.
-2. Ajoutez `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` dans les variables d'environnement (Supabase › Project Settings › API Keys, clé publique). Sans elles, le build échoue volontairement plutôt que de publier le mode démonstration.
-3. Dans Supabase, **Authentication › URL Configuration** : indiquez l'URL obtenue (ex. `https://app.quad-core.fr`) dans *Site URL* et *Redirect URLs*.
-
-Le fichier `vercel.json` reste fourni pour un hébergement sur Vercel Pro. Cloudflare Pages sert l'application sans configuration supplémentaire.
-
-### d. Invitations
+### a. Neon
 ```bash
-npx supabase login
-npx supabase link --project-ref <votre-ref>
-npx supabase functions deploy invite-member --no-verify-jwt
+npx neon login                                                       # ou une clé dans NEON_API_KEY
+npx neon projects create --name quadcore --region-id aws-eu-central-1
+npx neon link                                                        # lie ce dossier au projet
+npx neon deploy                                                      # authentification, Data API, bucket, fonction (neon.ts)
+npx neon env pull                                                    # écrit les accès dans .env
 ```
-La fonction vérifie elle-même que l'appelant est administrateur.
+Région Francfort : les données restent en Europe, et c'est l'une des régions où les Neon Functions existent.
 
-1. Salim se connecte et renseigne son nom dans **Équipe › Mon profil**.
-2. Dans **Équipe › Inviter**, il choisit Hasan, Sadish puis Moustakine (noms proposés en un geste) et saisit leur e-mail. Chacun reçoit un lien, choisit son mot de passe et arrive dans l'app.
-3. Sur chaque téléphone, ouvrez l'URL et choisissez **Ajouter à l'écran d'accueil**.
+### b. Cloudflare Pages
+1. Créez un projet Pages relié au dépôt. Commande de build `npm run build`, dossier de sortie `dist`.
+2. Ajoutez ces variables (voir `.env.example`) : `VITE_NEON_DATA_API_URL` (`npx neon data-api get`), `VITE_NEON_FILES_URL` (`npx neon functions get fichiers`), `NEON_AUTH_URL` (`NEON_AUTH_BASE_URL` dans le `.env`). Sans les deux premières, le build échoue volontairement plutôt que de publier le mode démonstration.
+3. Notez l'adresse obtenue, ou reliez un sous-domaine (ex. `https://app.quad-core.fr`).
 
-Un compte créé autrement qu'avec **Inviter** reste sans accès jusqu'à ce qu'un administrateur le réactive dans **Équipe**.
+Le dossier `functions/` est déployé tout seul : il relaie l'authentification par le domaine de l'app. Sans ce relais, le cookie de session serait un cookie tiers, bloqué par Safari et l'iPhone, et il faudrait se reconnecter sans cesse.
 
-### e. Sauvegardes
-Le plan gratuit de Supabase n'a pas de sauvegarde automatique et met en pause un projet inactif pendant une semaine. Avant d'y mettre de vraies données clients, passez au plan Pro (sauvegardes quotidiennes conservées 7 jours), ou faites vous-même un export régulier avec `npx supabase db dump`.
+### c. Installation
+```bash
+APP_URL=https://app.quad-core.fr npm run neon:installer
+```
+Le script applique le schéma, ferme les inscriptions publiques, autorise le domaine, configure le bucket, crée les quatre comptes administrateurs et vérifie les droits. Il peut être relancé sans risque.
+
+### d. Première connexion
+```bash
+APP_URL=https://app.quad-core.fr npm run neon:installer -- --envoyer-liens
+```
+Chacun reçoit un lien pour choisir son mot de passe. **Il est valable 15 minutes** : passé ce délai, « Mot de passe oublié » sur l'écran de connexion en envoie un autre. Sur chaque téléphone, ouvrez l'URL et choisissez **Ajouter à l'écran d'accueil**.
+
+### e. E-mails
+L'expéditeur partagé de Neon (`auth@mail.myneon.app`) suffit pour démarrer, mais son débit est limité et le message ne porte pas votre nom. Pour écrire depuis `@quad-core.fr`, renseignez un service SMTP dans **Neon › Settings › Better Auth › Custom SMTP provider**.
+
+### f. Sauvegardes
+Le plan gratuit de Neon permet de revenir 6 heures en arrière, avec une seule sauvegarde manuelle. Avant d'y mettre de vraies données clients, passez au plan Launch (facturé à l'usage, sans minimum), qui va jusqu'à 7 jours. En plan gratuit, la base s'endort après 5 minutes sans activité : la première action qui suit prend une seconde de plus.
 
 ### Développement local
 ```bash
-cp .env.example .env.local   # renseignez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY
 npm install
 npm run dev                  # http://localhost:5173
 ```
-Sans variables Supabase, `npm run dev` démarre en **mode démonstration** : les données sont fictives et stockées dans le navigateur.
+Sans variables Neon, `npm run dev` démarre en **mode démonstration** : les données sont fictives et stockées dans le navigateur. Pour travailler sur Neon, copiez `.env.example` vers `.env.local` et renseignez-le.
 
 `npm run build:demo` produit `dist-demo/index.html`. C'est un aperçu autonome en un seul fichier, en mode démo.
 
 ## 3. Architecture
 
 ```
+neon.ts            services Neon (authentification, Data API, bucket, fonction)
+neon-functions/    fichiers.ts : URL signées du bucket, réservées aux membres actifs
+functions/         api/auth : relais de Neon Auth par le domaine de l'app (Cloudflare Pages)
+scripts/           installer-neon.mjs : schéma, CORS, comptes de l'équipe
+db/migrations/     0001_quadcore · 0002_suivi_clients · 0003_synchronisation
 src/
-  data/       backend.ts (contrat) · supabaseBackend.ts · demoBackend.ts (miroir des triggers) · seed.ts
-              store.ts (état + temps réel + écritures optimistes) · actions.ts (règles métier)
-  lib/        types, constantes (statuts, couleurs), dates locales, liens natifs, calculs du tableau de bord
+  data/       backend.ts (contrat) · neonBackend.ts · demoBackend.ts (miroir des triggers) · seed.ts
+              store.ts (état + synchronisation + écritures optimistes) · actions.ts (règles métier)
+  lib/        types, constantes (statuts, couleurs), team.json, dates locales, liens natifs, calculs du tableau de bord
   components/ Shell (navigation, FAB, en-têtes), ui (feuilles, sélecteurs, toasts), Kanban, bits
   features/   dashboard · prospects · tickets (suivi) · projects (+ Revisions) · tasks · team · auth · shared (fil, fichiers)
-supabase/
-  migrations/0001_quadcore.sql · 0002_suivi_clients.sql
-  functions/invite-member/
 ```
+
+Le navigateur parle à trois services : le relais d'authentification (même domaine), la Data API de Neon pour les données (jeton de session, RLS appliquée par Postgres) et la fonction `fichiers` pour obtenir des URL signées.
 
 Un client est une fiche de la table `prospects` au statut `gagne`. Un ticket lui appartient toujours. Un commentaire avec un canal est un échange avec le client, sans canal une note interne.
 
 **Travail simultané sans perte de données**
 - Seuls les champs réellement modifiés sont envoyés. Deux personnes peuvent éditer des champs différents d'une même fiche sans s'écraser.
-- Toutes les tables sont diffusées en temps réel. Les écritures sont optimistes et annulées proprement en cas d'erreur.
-- Au retour du réseau et au retour de l'application au premier plan, les données sont rechargées.
+- Chaque changement est inscrit par trigger dans `db_changes`, que les appareils relisent toutes les 10 secondes tant que l'app est au premier plan. En arrière-plan, plus aucune requête : la base peut s'endormir, et tout est rechargé au retour.
+- Les écritures sont optimistes et annulées proprement en cas d'erreur.
 
 **L'historique ne dépend pas du client**
 - Les changements de statut, le fil d'activité, les numéros de ticket, les dates de complétion et de résolution et le regroupement des retouches sont écrits par des triggers Postgres. Chaque événement correspond donc à une action réelle en base.
@@ -105,8 +109,8 @@ Un client est une fiche de la table `prospects` au statut `gagne`. Un ticket lui
 
 ## 4. Sécurité
 
-- **Contrôle d'accès** : la RLS est active sur toutes les tables, et seuls les membres actifs voient les données. Un nouveau compte n'a accès à rien tant qu'il n'a pas été invité ou activé par un administrateur, même si les inscriptions publiques restaient ouvertes par erreur.
-- **Fichiers** : ils sont stockés dans un bucket privé et servis par URL signée valable 1 h.
-- **Rôle administrateur** : il n'est jamais lu depuis les métadonnées fournies par l'utilisateur. L'invitation d'un administrateur passe par la fonction serveur.
-- **Suppression** : supprimer définitivement un dossier efface aussi ses commentaires, l'historique et les références de fichiers. Les fichiers eux-mêmes restent dans le stockage et se retirent depuis Supabase › Storage.
+- **Contrôle d'accès** : la RLS est active sur toutes les tables, et seuls les membres actifs voient les données. Un compte sans profil actif n'a accès à rien, même si les inscriptions publiques étaient rouvertes par erreur : les profils sont créés uniquement par l'installation et par **Équipe › Inviter**.
+- **Fichiers** : ils sont stockés dans un bucket privé et servis par URL signée, valable 1 h en lecture et 5 min à l'envoi. Les clés S3 ne quittent jamais la fonction.
+- **Rôles** : le rôle `profiles.role` décide des droits sur les données. Le rôle de Neon Auth donne le droit de créer un compte ; il est aligné à chaque changement dans **Équipe**.
+- **Suppression** : supprimer définitivement un dossier efface aussi ses commentaires, l'historique et les références de fichiers. Les fichiers eux-mêmes restent dans le bucket et se retirent depuis Neon › Object storage.
 - **Liens externes** : tous en `noopener` ; aucune API Instagram ou WhatsApp n'est utilisée, uniquement des liens standard.

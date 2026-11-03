@@ -1,16 +1,16 @@
 import { create } from 'zustand'
 import type { Backend, ChangeEvent } from './backend'
-import { createSupabaseBackend } from './supabaseBackend'
+import { createNeonBackend } from './neonBackend'
 import { createDemoBackend } from './demoBackend'
 import type { DB, Profile, Row, TableName, UUID } from '../lib/types'
 
 declare const __SINGLE_FILE__: boolean
 
-const SB_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const DATA_API_URL = import.meta.env.VITE_NEON_DATA_API_URL as string | undefined
+const FILES_URL = import.meta.env.VITE_NEON_FILES_URL as string | undefined
 const FORCE_DEMO = __SINGLE_FILE__ || import.meta.env.VITE_DEMO === '1'
 
-export const backend: Backend = !FORCE_DEMO && SB_URL && SB_KEY ? createSupabaseBackend(SB_URL, SB_KEY) : createDemoBackend()
+export const backend: Backend = !FORCE_DEMO && DATA_API_URL && FILES_URL ? createNeonBackend(DATA_API_URL, FILES_URL) : createDemoBackend()
 
 const empty = (): DB => ({
   profiles: [], prospects: [], projects: [], revisions: [], tasks: [], tickets: [], comments: [], attachments: [], status_history: [], activities: [],
@@ -61,8 +61,8 @@ export function applyChange(table: TableName, event: ChangeEvent, row: Record<st
 
 // ———————————————————————— Session ————————————————————————
 let unsubscribe: (() => void) | null = null
-// Au démarrage, boot() et supabase-js annoncent tous les deux la session : un seul chargement
-// par compte, et seul le dernier demandé a le droit d'écrire l'état et de s'abonner au temps réel.
+// La session peut être annoncée plusieurs fois (démarrage, connexion) : un seul chargement
+// par compte, et seul le dernier demandé a le droit d'écrire l'état et de lancer la synchronisation.
 let loadingFor: UUID | null = null
 let sessionRun = 0
 
@@ -71,8 +71,9 @@ async function loadSession(userId: UUID | null) {
   const run = ++sessionRun
   loadingFor = null
   unsubscribe?.(); unsubscribe = null
-  if (!userId) { set({ phase: 'signedOut', userId: null, db: empty() }); return }
+  // Avant le test de session : le lien « choisir mon mot de passe » s'ouvre sans être connecté
   if (backend.needsPasswordSetup()) { set({ phase: 'setPassword', userId }); return }
+  if (!userId) { set({ phase: 'signedOut', userId: null, db: empty() }); return }
   loadingFor = userId
   set({ phase: 'loading', userId })
   try {
@@ -114,7 +115,8 @@ export async function boot() {
   }
 }
 
-export const passwordDone = () => loadSession(get().userId)
+// Le lien ne connecte pas forcément : on repart de la session réelle, sinon de l'écran de connexion
+export const passwordDone = async () => loadSession(await backend.currentUserId())
 
 // ———————————————————————— Notifications in-app ————————————————————————
 let toastId = 0

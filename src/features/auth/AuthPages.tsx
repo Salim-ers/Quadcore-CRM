@@ -51,7 +51,7 @@ export function LoginPage() {
             </button>
           ))}
         </div>
-        <p className="text-[12.5px] text-faint mt-6 leading-relaxed">En production, chaque collaborateur se connecte avec son e-mail et son mot de passe (Supabase Auth).</p>
+        <p className="text-[12.5px] text-faint mt-6 leading-relaxed">En production, chacun se connecte avec son e-mail et son mot de passe.</p>
       </AuthFrame>
     )
   }
@@ -106,6 +106,7 @@ export function SetPasswordPage() {
         {confirm && pwd !== confirm && <p className="text-[13px] text-danger">Les deux mots de passe ne correspondent pas.</p>}
         {error && <p className="text-[13.5px] font-semibold text-danger">{error}</p>}
         <button className="btn-primary h-12" disabled={!ok || busy}>{busy ? <Spinner /> : 'Enregistrer et continuer'}</button>
+        <button type="button" className="text-[13.5px] font-semibold text-muted min-h-[44px]" onClick={() => { backend.cancelPasswordSetup(); passwordDone() }}>Retour à la connexion</button>
       </form>
     </AuthFrame>
   )

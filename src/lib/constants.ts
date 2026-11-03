@@ -1,6 +1,7 @@
 import type {
-  BillingStatus, Category, Channel, Priority, ProjectStatus, ProjectType, ProspectStatus, TicketPriority, TicketStatus, TicketType, WorkStatus,
+  BillingStatus, Category, Channel, Priority, ProjectStatus, ProjectType, ProspectStatus, Role, TicketPriority, TicketStatus, TicketType, WorkStatus,
 } from './types'
+import team from './team.json'
 
 /** Tons de statut : discrets, lisibles en clair comme en sombre, jamais de violet ni de néon. */
 export type Tone = 'stone' | 'sky' | 'amber' | 'orange' | 'teal' | 'copper' | 'blue' | 'green' | 'rose' | 'slate' | 'ink'
@@ -95,13 +96,8 @@ export const LOST_REASONS = ['Pas de budget', 'A déjà un site', 'Pas intéress
 
 export const MEMBER_COLORS = ['#AA543D', '#2F6B5E', '#3D5A80', '#8A6A2F', '#6B4E3D', '#52606D']
 
-/** Les quatre associés : proposés en un geste dans « Inviter un collaborateur ». */
-export const TEAM_ROSTER = [
-  { first_name: 'Salim', last_name: 'EL RHALMANI' },
-  { first_name: 'Hasan', last_name: 'AKAR' },
-  { first_name: 'Sadish', last_name: 'AROUL' },
-  { first_name: 'Moustakine', last_name: 'MOUHAMAD' },
-]
+/** Les quatre associés : créés par `npm run neon:installer`, proposés en un geste dans « Inviter » s'il en manque un. */
+export const TEAM_ROSTER = team as { first_name: string; last_name: string; email: string; role: Role; color: string }[]
 
 export const TICKET_STATUSES: StatusDef<TicketStatus>[] = [
   { value: 'nouveau', label: 'Nouveau', tone: 'sky' },

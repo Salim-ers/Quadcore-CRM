@@ -3,7 +3,7 @@ import { backend } from '../data/store'
 
 const cache = new Map<string, { url: string; at: number }>()
 
-/** URL d'affichage d'un fichier stocké (URL signée Supabase, mise en cache 50 min). */
+/** URL d'affichage d'un fichier stocké (URL signée du bucket, mise en cache 50 min). */
 export function useFileUrl(path: string | null | undefined) {
   const [url, setUrl] = useState<string | null>(() => (path && cache.get(path)?.url) || null)
   useEffect(() => {

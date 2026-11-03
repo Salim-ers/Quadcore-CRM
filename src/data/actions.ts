@@ -194,7 +194,8 @@ export async function uploadAttachment(entity_type: EntityType, entity_id: UUID,
 export async function deleteAttachment(id: UUID) {
   const a = db().attachments.find((x) => x.id === id)
   if (!a) return
-  if (await deleteRow('attachments', id)) await backend.removeFile(a.file_path)
+  // La ligne d'abord : c'est sa suppression qui vérifie le droit de retirer le fichier
+  if (await deleteRow('attachments', id)) await backend.removeFile(a.file_path).catch(() => { /* fichier orphelin, sans effet visible */ })
 }
 
 export async function uploadLogo(prospect: Prospect, file: File) {
