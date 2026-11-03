@@ -1,0 +1,195 @@
+import { backend, deleteRow, insertRow, me, newId, toast, updateRow, useStore } from './store'
+import type {
+  EntityType, Project, ProjectStatus, Prospect, ProspectStatus, Revision, Task, UUID, WorkStatus,
+} from '../lib/types'
+import { normalizeInstagram } from '../lib/links'
+import { todayStr } from '../lib/dates'
+
+const db = () => useStore.getState().db
+
+// ———————————————————————— Prospects ————————————————————————
+export async function createProspect(input: Partial<Prospect>) {
+  const ig = normalizeInstagram(input.instagram_handle ?? input.instagram_url ?? null)
+  return insertRow('prospects', {
+    owner_id: me()?.id ?? null,
+    priority: 'normale',
+    status: 'a_prospecter',
+    archived: false,
+    ...input,
+    name: (input.name ?? '').trim(),
+    instagram_handle: ig.handle,
+    instagram_url: ig.url,
+    created_by: me()?.id ?? null,
+  })
+}
+
+export function updateProspect(id: UUID, patch: Partial<Prospect>) {
+  if ('instagram_handle' in patch || 'instagram_url' in patch) {
+    const ig = normalizeInstagram(patch.instagram_handle ?? patch.instagram_url ?? null)
+    patch = { ...patch, instagram_handle: ig.handle, instagram_url: ig.url }
+  }
+  return updateRow('prospects', id, patch)
+}
+
+export function setProspectStatus(id: UUID, status: ProspectStatus, extra: Partial<Prospect> = {}) {
+  const patch: Partial<Prospect> = { ...extra, status }
+  if (status !== 'perdu') patch.lost_reason = null
+  return updateRow('prospects', id, patch)
+}
+
+// ———————————————————————— Projets ————————————————————————
+export async function createProject(input: Partial<Project>) {
+  return insertRow('projects', {
+    owner_id: me()?.id ?? null,
+    type: 'vitrine',
+    status: 'a_preparer',
+    billing_status: 'non_facture',
+    revision_round: 1,
+    archived: false,
+    start_date: todayStr(),
+    ...input,
+    name: (input.name ?? '').trim(),
+    created_by: me()?.id ?? null,
+  })
+}
+
+/** Pré-remplit un projet à partir d'une fiche prospect (proposé quand le prospect est gagné). */
+export function projectDraftFrom(p: Prospect): Partial<Project> {
+  const service = (p.service ?? '').toLowerCase()
+  const type: Project['type'] = service.includes('e-commerce') ? 'ecommerce' : service.includes('click') ? 'click_collect' : service.includes('outil') ? 'application' : 'vitrine'
+  return {
+    name: `Site ${p.name}`,
+    prospect_id: p.id,
+    owner_id: p.owner_id ?? me()?.id ?? null,
+    type,
+    description: [p.service, p.notes].filter(Boolean).join(' — ') || null,
+  }
+}
+
+export const updateProject = (id: UUID, patch: Partial<Project>) => updateRow('projects', id, patch)
+
+export async function setProjectStatus(id: UUID, status: ProjectStatus) {
+  const project = db().projects.find((p) => p.id === id)
+  if (!project) return false
+  const patch: Partial<Project> = { status }
+  // Retour en « modifications demandées » après une validation : nouvelle série de retouches
+  if (status === 'modifs_demandees' && project.status !== 'modifs_demandees') {
+    const current = db().revisions.filter((r) => r.project_id === id && r.round === project.revision_round)
+    if (current.length > 0 && current.every((r) => r.status === 'termine')) patch.revision_round = project.revision_round + 1
+  }
+  return updateRow('projects', id, patch)
+}
+
+// ———————————————————————— Retouches ————————————————————————
+export async function addRevision(project: Project, description: string, extra: Partial<Revision> = {}) {
+  let round = project.revision_round
+  const current = db().revisions.filter((r) => r.project_id === project.id && r.round === round)
+  if (current.length > 0 && current.every((r) => r.status === 'termine') && project.status !== 'modifs_demandees') {
+    // la série précédente est soldée : les nouvelles demandes ouvrent une nouvelle série (historique conservé)
+    round += 1
+    await updateRow('projects', project.id, { revision_round: round, status: 'modifs_demandees' })
+  } else if (project.status !== 'modifs_demandees') {
+    await updateRow('projects', project.id, { status: 'modifs_demandees' })
+  }
+  return insertRow('revisions', {
+    project_id: project.id,
+    round,
+    description: description.trim(),
+    status: 'a_faire',
+    assignee_id: extra.assignee_id ?? project.owner_id ?? me()?.id ?? null,
+    position: current.length,
+    created_by: me()?.id ?? null,
+    ...extra,
+  })
+}
+
+export async function startNewRound(project: Project) {
+  await updateRow('projects', project.id, { revision_round: project.revision_round + 1, status: 'modifs_demandees' })
+}
+
+export const updateRevision = (id: UUID, patch: Partial<Revision>) => updateRow('revisions', id, patch)
+export const setRevisionStatus = (id: UUID, status: WorkStatus) => updateRow('revisions', id, { status })
+export const deleteRevision = (id: UUID) => deleteRow('revisions', id)
+
+// ———————————————————————— Tâches ————————————————————————
+export function createTask(input: Partial<Task>) {
+  return insertRow('tasks', {
+    assignee_id: me()?.id ?? null,
+    priority: 'normale',
+    status: 'a_faire',
+    is_follow_up: false,
+    ...input,
+    title: (input.title ?? '').trim(),
+    created_by: me()?.id ?? null,
+  })
+}
+export const updateTask = (id: UUID, patch: Partial<Task>) => updateRow('tasks', id, patch)
+export const deleteTask = (id: UUID) => deleteRow('tasks', id)
+
+export async function toggleTask(task: Task) {
+  const done = task.status !== 'termine'
+  const ok = await updateRow('tasks', task.id, { status: done ? 'termine' : 'a_faire' })
+  if (ok && done && task.is_follow_up && task.prospect_id) {
+    const p = db().prospects.find((x) => x.id === task.prospect_id)
+    // la relance est faite : on libère la date de relance si elle correspondait
+    if (p && p.next_follow_up && task.due_date && p.next_follow_up <= task.due_date) await updateRow('prospects', p.id, { next_follow_up: null })
+    toast('Relance enregistrée dans l’historique commercial', 'success')
+  }
+  return ok
+}
+
+/** Programme une relance : date sur la fiche + tâche de relance assignée. */
+export async function scheduleFollowUp(p: Prospect, date: string, note?: string, assignee?: UUID | null) {
+  await updateRow('prospects', p.id, { next_follow_up: date, ...(p.status === 'contacte' || p.status === 'en_attente' ? { status: 'a_relancer' as const } : {}) })
+  await createTask({
+    title: `Relancer ${p.name}`,
+    description: note || null,
+    due_date: date,
+    prospect_id: p.id,
+    is_follow_up: true,
+    assignee_id: assignee ?? p.owner_id ?? me()?.id ?? null,
+  })
+  toast('Relance programmée', 'success')
+}
+
+// ———————————————————————— Commentaires & fichiers ————————————————————————
+export const addComment = (entity_type: EntityType, entity_id: UUID, body: string) =>
+  insertRow('comments', { entity_type, entity_id, body: body.trim(), author_id: me()?.id ?? null })
+export const deleteComment = (id: UUID) => deleteRow('comments', id)
+
+export async function uploadAttachment(entity_type: EntityType, entity_id: UUID, file: File) {
+  const safe = file.name.normalize('NFD').replace(/[^\w.-]+/g, '_').slice(-80)
+  const path = `${entity_type}/${entity_id}/${newId()}-${safe}`
+  try {
+    await backend.uploadFile(path, file)
+  } catch (e) {
+    toast((e as Error).message || 'Envoi du fichier impossible', 'error')
+    return null
+  }
+  return insertRow('attachments', {
+    entity_type, entity_id, file_path: path, file_name: file.name, mime_type: file.type || null, size_bytes: file.size, uploaded_by: me()?.id ?? null,
+  })
+}
+
+export async function deleteAttachment(id: UUID) {
+  const a = db().attachments.find((x) => x.id === id)
+  if (!a) return
+  if (await deleteRow('attachments', id)) await backend.removeFile(a.file_path)
+}
+
+export async function uploadLogo(prospect: Prospect, file: File) {
+  const path = `prospect/${prospect.id}/logo-${newId()}`
+  try {
+    await backend.uploadFile(path, file)
+    await updateRow('prospects', prospect.id, { logo_path: path })
+  } catch (e) {
+    toast((e as Error).message || 'Envoi du logo impossible', 'error')
+  }
+}
+
+// ———————————————————————— Archivage (admin) ————————————————————————
+export async function archive(kind: 'prospects' | 'projects', id: UUID, archived = true) {
+  const ok = await updateRow(kind, id, { archived })
+  if (ok) toast(archived ? 'Dossier archivé' : 'Dossier restauré', 'success')
+  return ok
+}
