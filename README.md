@@ -61,7 +61,7 @@ APP_URL=https://quadcore-crm.vercel.app npm run neon:installer -- --envoyer-lien
 Chacun reçoit un lien pour choisir son mot de passe. **Il est valable 1 heure** : passé ce délai, « Mot de passe oublié » sur l'écran de connexion en envoie un autre. Sur chaque téléphone, ouvrez l'URL et choisissez **Ajouter à l'écran d'accueil**.
 
 ### e. E-mails
-L'expéditeur partagé de Neon (`auth@mail.myneon.app`) suffit pour démarrer, mais son débit est limité et le message ne vient pas de votre domaine. Pour écrire depuis `@quad-core.fr`, renseignez un service SMTP dans **Neon › Settings › Better Auth › Custom SMTP provider**.
+L'expéditeur partagé de Neon (`auth@mail.myneon.app`) a un débit limité et ne vient pas de votre domaine : à la première installation, ses messages ne sont pas arrivés. Tant qu'aucun service SMTP n'est renseigné dans **Neon › Settings › Better Auth › Custom SMTP provider**, ne comptez ni sur les invitations ni sur « Mot de passe oublié ».
 
 ### f. Sauvegardes
 Le plan gratuit de Neon permet de revenir 6 heures en arrière, avec une seule sauvegarde manuelle. Avant d'y mettre de vraies données clients, passez au plan Launch (facturé à l'usage, sans minimum), qui va jusqu'à 7 jours. En plan gratuit, la base s'endort après 5 minutes sans activité : la première action qui suit prend une seconde de plus.
@@ -82,7 +82,7 @@ neon.ts            services Neon (authentification, Data API, bucket, fonction)
 neon-functions/    fichiers.ts : URL signées du bucket, réservées aux membres actifs
 api/               auth-proxy.js : relais de Neon Auth par le domaine de l'app (Vercel Function)
 scripts/           installer-neon.mjs : schéma, CORS, comptes de l'équipe
-db/migrations/     0001_quadcore · 0002_suivi_clients · 0003_synchronisation
+db/migrations/     0001_quadcore · 0002_suivi_clients · 0003_synchronisation · 0004_identite_fiable
 src/
   data/       backend.ts (contrat) · neonBackend.ts · demoBackend.ts (miroir des triggers) · seed.ts
               store.ts (état + synchronisation + écritures optimistes) · actions.ts (règles métier)
@@ -107,6 +107,7 @@ Un client est une fiche de la table `prospects` au statut `gagne`. Un ticket lui
 
 ## 4. Sécurité
 
+- **Identité** : `public.current_uid()` lit le jeton vérifié par la Data API. N'utilisez pas `auth.uid()` : sur une connexion neuve, elle renvoie NULL pendant la première requête, et la RLS répond alors « aucune ligne » sans erreur.
 - **Contrôle d'accès** : la RLS est active sur toutes les tables, et seuls les membres actifs voient les données. Un compte sans profil actif n'a accès à rien, même si les inscriptions publiques étaient rouvertes par erreur : les profils sont créés uniquement par l'installation et par **Équipe › Inviter**.
 - **Fichiers** : ils sont stockés dans un bucket privé et servis par URL signée, valable 1 h en lecture et 5 min à l'envoi. Les clés S3 ne quittent jamais la fonction.
 - **Rôles** : le rôle `profiles.role` décide des droits sur les données. Le rôle de Neon Auth donne le droit de créer un compte ; il est aligné à chaque changement dans **Équipe**.
