@@ -22,35 +22,54 @@ export const TONES: Record<Tone, { badge: string; dot: string; bar: string }> = 
 
 interface StatusDef<S> { value: S; label: string; short?: string; tone: Tone }
 
+// Statuts stockés en base : gardés pour l'historique, mais l'app n'affiche que le parcours simple ci-dessous
 export const PROSPECT_STATUSES: StatusDef<ProspectStatus>[] = [
-  { value: 'a_prospecter', label: 'À prospecter', tone: 'stone' },
-  { value: 'contacte', label: 'Contacté', tone: 'sky' },
-  { value: 'en_attente', label: 'En attente de réponse', short: 'En attente', tone: 'amber' },
+  { value: 'a_prospecter', label: 'Prospect', tone: 'stone' },
+  { value: 'contacte', label: 'Client vu', tone: 'sky' },
+  { value: 'en_attente', label: 'Client vu', tone: 'sky' },
   { value: 'a_relancer', label: 'À relancer', tone: 'orange' },
-  { value: 'interesse', label: 'Intéressé', tone: 'teal' },
-  { value: 'demo_proposee', label: 'Démo proposée', tone: 'copper' },
-  { value: 'devis_envoye', label: 'Devis envoyé', tone: 'blue' },
-  { value: 'gagne', label: 'Accepté / gagné', short: 'Gagné', tone: 'green' },
-  { value: 'perdu', label: 'Refusé / perdu', short: 'Perdu', tone: 'rose' },
+  { value: 'interesse', label: 'Client vu', tone: 'sky' },
+  { value: 'demo_proposee', label: 'Client vu', tone: 'sky' },
+  { value: 'devis_envoye', label: 'Client vu', tone: 'sky' },
+  { value: 'gagne', label: 'Accepté', tone: 'green' },
+  { value: 'perdu', label: 'Refusé', tone: 'rose' },
 ]
 
 export const PROJECT_STATUSES: StatusDef<ProjectStatus>[] = [
-  { value: 'a_preparer', label: 'À préparer', tone: 'stone' },
-  { value: 'demo_creation', label: 'Démo en création', tone: 'sky' },
-  { value: 'demo_prete', label: 'Démo prête', tone: 'teal' },
-  { value: 'demo_envoyee', label: 'Démo envoyée', tone: 'copper' },
-  { value: 'attente_validation', label: 'En attente de validation', short: 'Attente validation', tone: 'amber' },
-  { value: 'modifs_demandees', label: 'Modifications demandées', short: 'Retouches', tone: 'orange' },
-  { value: 'demo_refusee', label: 'Démo refusée', tone: 'rose' },
-  { value: 'demo_validee', label: 'Démo validée', tone: 'green' },
-  { value: 'dev_final', label: 'Site final en développement', short: 'Dév. final', tone: 'blue' },
-  { value: 'pret_livrer', label: 'Site prêt à livrer', short: 'Prêt à livrer', tone: 'teal' },
-  { value: 'livre', label: 'Livré', tone: 'ink' },
-  { value: 'maintenance', label: 'Maintenance', tone: 'slate' },
+  { value: 'a_preparer', label: 'Site en cours', tone: 'amber' },
+  { value: 'demo_creation', label: 'Site en cours', tone: 'amber' },
+  { value: 'demo_prete', label: 'Site en cours', tone: 'amber' },
+  { value: 'demo_envoyee', label: 'Site en cours', tone: 'amber' },
+  { value: 'attente_validation', label: 'Site en cours', tone: 'amber' },
+  { value: 'modifs_demandees', label: 'Retouches en cours', tone: 'amber' },
+  { value: 'demo_refusee', label: 'Site en cours', tone: 'amber' },
+  { value: 'demo_validee', label: 'Site en cours', tone: 'amber' },
+  { value: 'dev_final', label: 'Site en cours', tone: 'amber' },
+  { value: 'pret_livrer', label: 'Site en cours', tone: 'amber' },
+  { value: 'livre', label: 'Site livré', tone: 'green' },
+  { value: 'maintenance', label: 'Site livré', tone: 'green' },
 ]
 
 export const PROSPECT_CLOSED: ProspectStatus[] = ['gagne', 'perdu']
 export const PROJECT_DONE: ProjectStatus[] = ['livre', 'maintenance', 'demo_refusee']
+
+// ———————————————————————— Le parcours : Prospect → Client vu → Accepté ou Refusé → Site en cours → Site livré ————————
+export type ProspectStep = 'prospect' | 'vu' | 'accepte' | 'refuse'
+export const PROSPECT_STEPS: { value: ProspectStep; label: string; plural: string; tone: Tone; status: ProspectStatus }[] = [
+  { value: 'prospect', label: 'Prospect', plural: 'Prospects', tone: 'stone', status: 'a_prospecter' },
+  { value: 'vu', label: 'Client vu', plural: 'Clients vus', tone: 'sky', status: 'contacte' },
+  { value: 'accepte', label: 'Accepté', plural: 'Acceptés', tone: 'green', status: 'gagne' },
+  { value: 'refuse', label: 'Refusé', plural: 'Refusés', tone: 'rose', status: 'perdu' },
+]
+export const prospectStep = (s: ProspectStatus): ProspectStep =>
+  s === 'a_prospecter' ? 'prospect' : s === 'gagne' ? 'accepte' : s === 'perdu' ? 'refuse' : 'vu'
+
+export type SiteStep = 'en_cours' | 'livre'
+export const SITE_STEPS: { value: SiteStep; label: string; plural: string; tone: Tone; status: ProjectStatus }[] = [
+  { value: 'en_cours', label: 'Site en cours', plural: 'Sites en cours', tone: 'amber', status: 'dev_final' },
+  { value: 'livre', label: 'Site livré', plural: 'Sites livrés', tone: 'green', status: 'livre' },
+]
+export const siteStep = (s: ProjectStatus): SiteStep => (s === 'livre' || s === 'maintenance' ? 'livre' : 'en_cours')
 
 export const CATEGORIES: { value: Category; label: string; emoji: string }[] = [
   { value: 'restaurant', label: 'Restaurant', emoji: '🍽' },

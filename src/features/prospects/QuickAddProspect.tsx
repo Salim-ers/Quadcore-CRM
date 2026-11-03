@@ -36,7 +36,7 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
     return n.length >= 3 ? s.db.prospects.find((p) => p.name.toLowerCase() === n) : undefined
   })
 
-  async function submit(openAfter: boolean) {
+  async function submit() {
     if (!f.name.trim()) { nameRef.current?.focus(); return }
     setSaving(true)
     const ig = f.instagram.trim()
@@ -57,64 +57,53 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
     setSaving(false)
     if (!row) return
     onClose()
-    if (openAfter) nav(`/prospects/${row.id}`)
-    else toast(`${row.name} ajouté aux prospects`, 'success', { label: 'Ouvrir', run: () => nav(`/prospects/${row.id}`) })
+    toast(`${row.name} ajouté aux prospects`, 'success', { label: 'Ouvrir', run: () => nav(`/prospects/${row.id}`) })
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="Nouveau prospect"
-      footer={
-        <div className="flex gap-2">
-          <button className="btn-soft flex-1" disabled={saving || !f.name.trim()} onClick={() => submit(true)}>Ajouter et ouvrir</button>
-          <button className="btn-primary flex-[1.3]" disabled={saving || !f.name.trim()} onClick={() => submit(false)}>Ajouter</button>
-        </div>
-      }>
-      <form onSubmit={(e) => { e.preventDefault(); submit(false) }} className="flex flex-col gap-4">
-        <Field label="Nom du commerce *">
-          <Input ref={nameRef} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Ex. Coffee Concept" autoComplete="off" enterKeyHint="done" />
-          {dup && <span className="block mt-1.5 text-[12.5px] font-semibold text-copper-ink">Un prospect « {dup.name} » existe déjà.</span>}
-        </Field>
-
+    <Sheet open={open} onClose={onClose} title="Nouveau prospect" size="sm"
+      footer={<button className="btn-primary w-full" disabled={saving || !f.name.trim()} onClick={submit}>Ajouter</button>}>
+      <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-3">
         <div>
-          <span className="field-label">Catégorie</span>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 pb-0.5">
-            {CATEGORIES.map((c) => (
-              <button key={c.value} type="button" onClick={() => set('category', f.category === c.value ? null : c.value)}
-                className={cx('chip h-10', f.category === c.value && 'chip-on')}>
-                <CategoryIcon category={c.value} size={16} />{c.label}
-              </button>
-            ))}
-          </div>
+          <Input ref={nameRef} aria-label="Nom du commerce" value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Nom du commerce" autoComplete="off" enterKeyHint="done" />
+          {dup && <span className="block mt-1.5 text-[12.5px] font-semibold text-copper-ink">« {dup.name} » existe déjà.</span>}
         </div>
+        <label className="relative block">
+          <span className="sr-only">Téléphone</span>
+          <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
+          <Input className="pl-10" type="tel" inputMode="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="Téléphone" />
+        </label>
+        <label className="relative block">
+          <span className="sr-only">Ville</span>
+          <MapPin size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
+          <Input className="pl-10" value={f.city} onChange={(e) => set('city', e.target.value)} placeholder="Ville" />
+        </label>
+        <label className="relative block">
+          <span className="sr-only">Instagram</span>
+          <AtSign size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
+          <Input className="pl-10" value={f.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="Instagram" autoCapitalize="none" autoCorrect="off" />
+        </label>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="relative block">
-            <span className="sr-only">Instagram</span>
-            <AtSign size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
-            <Input className="pl-10" value={f.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="@identifiant ou lien Instagram" autoCapitalize="none" autoCorrect="off" />
-          </label>
-          <label className="relative block">
-            <span className="sr-only">Téléphone</span>
-            <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
-            <Input className="pl-10" type="tel" inputMode="tel" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="Téléphone" />
-          </label>
-          <label className="relative block sm:col-span-2">
-            <span className="sr-only">Ville</span>
-            <MapPin size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
-            <Input className="pl-10" value={f.city} onChange={(e) => set('city', e.target.value)} placeholder="Ville" />
-          </label>
-        </div>
-
-        <Field label="Responsable"><OwnerButton value={owner} onChange={setOwner} /></Field>
-
-        <button type="button" onClick={() => setMore((m) => !m)} className="flex items-center gap-1.5 text-[14px] font-semibold text-muted self-start min-h-[40px]">
-          <ChevronDown size={17} className={cx('transition', more && 'rotate-180')} /> {more ? 'Moins de détails' : 'Plus de détails'}
+        <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} className="flex items-center gap-1.5 text-[14px] font-semibold text-muted self-start min-h-[40px]">
+          <ChevronDown size={17} className={cx('transition', more && 'rotate-180')} /> Plus de détails
         </button>
 
         {more && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-up">
+          <div className="flex flex-col gap-4 animate-fade-up">
+            <div>
+              <span className="field-label">Catégorie</span>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((c) => (
+                  <button key={c.value} type="button" onClick={() => set('category', f.category === c.value ? null : c.value)}
+                    className={cx('chip h-10', f.category === c.value && 'chip-on')}>
+                    <CategoryIcon category={c.value} size={16} />{c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Field label="Nom du contact"><Input value={f.contact_name} onChange={(e) => set('contact_name', e.target.value)} autoComplete="off" /></Field>
             <Field label="E-mail"><Input type="email" inputMode="email" autoCapitalize="none" value={f.email} onChange={(e) => set('email', e.target.value)} /></Field>
+            <Field label="Responsable"><OwnerButton value={owner} onChange={setOwner} /></Field>
             <Field label="Source">
               <Select value={f.source} onChange={(e) => set('source', e.target.value)}>
                 <option value="">—</option>{SOURCES.map((s) => <option key={s}>{s}</option>)}
@@ -125,14 +114,15 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
                 <option value="">—</option>{SERVICES.map((s) => <option key={s}>{s}</option>)}
               </Select>
             </Field>
-            <Field label="Priorité" className="sm:col-span-2">
+            <div>
+              <span className="field-label">Priorité</span>
               <div className="grid grid-cols-3 gap-2">
                 {PRIORITIES.map((p) => (
                   <button key={p.value} type="button" onClick={() => set('priority', p.value)} className={cx('chip justify-center h-11', f.priority === p.value && 'chip-on')}>{p.label}</button>
                 ))}
               </div>
-            </Field>
-            <Field label="Notes internes" className="sm:col-span-2"><TextArea value={f.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Ce qui a attiré votre attention…" /></Field>
+            </div>
+            <Field label="Notes"><TextArea value={f.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Ce qui a attiré votre attention…" /></Field>
           </div>
         )}
         <button type="submit" className="hidden" />

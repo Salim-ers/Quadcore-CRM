@@ -50,7 +50,7 @@ function checkNow() {
   if (!items.length) return
   const label = (i: (typeof items)[number]) =>
     i.kind === 'task' ? i.task.title : i.kind === 'followup' ? `Relancer ${i.prospect.name}` : i.kind === 'revisions' ? `${i.remaining} retouche(s) — ${i.project.name}` : i.kind === 'delivery' ? `Livraison : ${i.project.name}`
-      : i.kind === 'ticket' ? `Ticket #${i.ticket.number} : ${i.ticket.subject}` : i.kind === 'ticket_wait' ? `Sans réponse du client : ticket #${i.ticket.number}` : `Validation en attente : ${i.project.name}`
+      : i.kind === 'ticket' ? `Ticket #${i.ticket.number} : ${i.ticket.subject}` : `Sans réponse du client : ticket #${i.ticket.number}`
   if (items.length === 1) show('QUADCORE — à faire', label(items[0]), items[0].id)
   else show(`QUADCORE — ${items.length} actions aujourd’hui`, items.slice(0, 3).map(label).join(' · '), 'qc-daily')
   try {
@@ -60,19 +60,11 @@ function checkNow() {
   } catch { /* noop */ }
 }
 
-/** Boucle de rappels (toutes les 10 min) + rappel in-app à l'ouverture */
+/** Boucle de rappels (toutes les 10 min) */
 export function useReminders() {
   const phase = useStore((s) => s.phase)
   useEffect(() => {
     if (phase !== 'ready') return
-    const s = useStore.getState()
-    const n = todayItems(s.db, s.userId).length
-    let shown = false
-    try { shown = sessionStorage.getItem('qc-inapp-reminder') === todayStr() } catch { /* noop */ }
-    if (n > 0 && !shown) {
-      setTimeout(() => toast(`${n} action${n > 1 ? 's' : ''} à faire aujourd’hui`), 900)
-      try { sessionStorage.setItem('qc-inapp-reminder', todayStr()) } catch { /* noop */ }
-    }
     const first = setTimeout(checkNow, 3000)
     const id = setInterval(checkNow, 10 * 60_000)
     const onVis = () => document.visibilityState === 'visible' && checkNow()

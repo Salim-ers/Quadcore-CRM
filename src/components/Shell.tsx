@@ -1,13 +1,14 @@
-import { type ReactNode, useEffect, useState } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { CheckSquare, ChevronLeft, FolderKanban, Home, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Globe, Home, MoreHorizontal, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
 import { create } from 'zustand'
 import { useMe, useStore, backend } from '../data/store'
 import { todayStr } from '../lib/dates'
-import { Avatar, Logo, cx } from './ui'
+import { Avatar, Logo, Sheet, cx } from './ui'
 import { QuickAddProspect } from '../features/prospects/QuickAddProspect'
 import { TicketSheet, type TicketDraft } from '../features/tickets/TicketSheet'
-import { fullName, isTicketOpen, liveTickets } from '../lib/derive'
+import { PROSPECT_STEPS } from '../lib/constants'
+import { fullName, isTicketOpen, liveTickets, stepCounts } from '../lib/derive'
 
 export const useUi = create<{
   quickAdd: boolean; setQuickAdd: (v: boolean) => void
@@ -20,14 +21,16 @@ export const useUi = create<{
   closeTicket: () => set({ ticketDraft: null }),
 }))
 
-// Sur mobile, l'équipe s'ouvre depuis l'avatar de l'accueil : la barre garde cinq entrées
+// Le parcours en premier ; le reste est rangé dans « Plus »
 const NAV = [
   { to: '/', label: 'Accueil', icon: Home, end: true },
   { to: '/prospects', label: 'Prospects', icon: Store },
-  { to: '/suivi', label: 'Suivi', icon: Ticket },
-  { to: '/projets', label: 'Projets', icon: FolderKanban },
+  { to: '/projets', label: 'Sites', icon: Globe },
+]
+const MORE = [
+  { to: '/suivi', label: 'Tickets clients', icon: Ticket },
   { to: '/taches', label: 'Tâches', icon: CheckSquare },
-  { to: '/equipe', label: 'Équipe', icon: Users, desktopOnly: true },
+  { to: '/equipe', label: 'Équipe', icon: Users },
 ]
 
 function useTaskBadge() {
@@ -56,10 +59,28 @@ export function Shell({ children }: { children: ReactNode }) {
   const taskBadge = useTaskBadge()
   const ticketBadge = useTicketBadge()
   const badgeOf = (to: string) => (to === '/taches' ? taskBadge : to === '/suivi' ? ticketBadge : 0)
+  const moreBadge = taskBadge + ticketBadge
   const me = useMe()
   const loc = useLocation()
   const nav = useNavigate()
   const onSuivi = loc.pathname.startsWith('/suivi')
+  const inMore = MORE.some((m) => loc.pathname.startsWith(m.to))
+  const [moreOpen, setMoreOpen] = useState(inMore)
+  const [moreSheet, setMoreSheet] = useState(false)
+  useEffect(() => { if (inMore) setMoreOpen(true) }, [inMore])
+  const db = useStore((s) => s.db)
+  const counts = useMemo(() => stepCounts(db), [db])
+  // Les sous-menus des deux grandes entrées, avec leur compte
+  const subItems: Record<string, { to: string; label: string; count: number; active: boolean }[]> = {
+    '/prospects': PROSPECT_STEPS.map((s) => {
+      const f = new URLSearchParams(loc.search).get('f')
+      return { to: s.value === 'prospect' ? '/prospects' : `/prospects?f=${s.value}`, label: s.plural, count: counts[s.value], active: s.value === 'prospect' ? !f : f === s.value }
+    }),
+    '/projets': [
+      { to: '/projets', label: 'En cours', count: counts.en_cours, active: new URLSearchParams(loc.search).get('g') !== 'livres' },
+      { to: '/projets?g=livres', label: 'Livrés', count: counts.livre, active: new URLSearchParams(loc.search).get('g') === 'livres' },
+    ],
+  }
 
   // raccourcis PWA « Ajouter un prospect » et « Nouveau ticket » (?new=1)
   useEffect(() => {
@@ -91,22 +112,51 @@ export function Shell({ children }: { children: ReactNode }) {
       {/* ——— Barre latérale (ordinateur) ——— */}
       <aside className="hidden lg:flex flex-col w-[248px] shrink-0 h-screen sticky top-0 border-r border-line bg-surface/60 px-4 py-5">
         <div className="px-2 mb-7"><Logo size={30} /></div>
-        <button className="btn-primary w-full mb-2 whitespace-nowrap justify-start px-3.5 text-[14.5px]" onClick={() => setQuickAdd(true)}>
-          <Plus size={18} /> Nouveau prospect <kbd className="ml-auto text-[11px] opacity-70 font-sans border border-current/30 rounded px-1.5">N</kbd>
-        </button>
-        <button className="btn-soft w-full mb-5 whitespace-nowrap justify-start px-3.5 text-[14.5px]" onClick={() => newTicket()}>
-          <Ticket size={18} /> Nouveau ticket <kbd className="ml-auto text-[11px] opacity-70 font-sans border border-current/30 rounded px-1.5">T</kbd>
+        <button className="btn-primary w-full mb-5 whitespace-nowrap justify-start px-3.5 text-[14.5px]" onClick={() => setQuickAdd(true)}>
+          <Plus size={18} /> Nouveau prospect
         </button>
         <nav className="flex flex-col gap-0.5">
           {NAV.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end}
-              className={({ isActive }) => cx('flex items-center gap-3 h-11 px-3 rounded-xl font-semibold text-[14.5px] transition',
-                isActive ? 'bg-ink text-bg' : 'text-muted hover:bg-sunken hover:text-ink')}>
-              <Icon size={19} strokeWidth={2} />
-              <span className="flex-1">{label}</span>
-              {badgeOf(to) > 0 && <span className="tabular text-[12px] font-bold min-w-[22px] h-[22px] px-1.5 rounded-full bg-copper text-onCopper flex items-center justify-center">{badgeOf(to)}</span>}
-            </NavLink>
+            <div key={to}>
+              <NavLink to={to} end={end}
+                className={({ isActive }) => cx('flex items-center gap-3 h-11 px-3 rounded-xl font-semibold text-[14.5px] transition',
+                  isActive ? 'bg-ink text-bg' : 'text-muted hover:bg-sunken hover:text-ink')}>
+                <Icon size={19} strokeWidth={2} />
+                <span className="flex-1">{label}</span>
+              </NavLink>
+              {subItems[to] && loc.pathname.startsWith(to) && (
+                <div className="flex flex-col gap-0.5 mt-0.5 mb-1 ml-[22px] pl-3 border-l border-line animate-fade-up">
+                  {subItems[to].map((s) => (
+                    <Link key={s.to} to={s.to} aria-current={s.active ? 'page' : undefined}
+                      className={cx('flex items-center h-9 px-2.5 rounded-lg text-[13.5px] font-semibold transition', s.active ? 'text-ink bg-sunken' : 'text-muted hover:text-ink hover:bg-sunken/60')}>
+                      <span className="flex-1">{s.label}</span>
+                      <span className="tabular text-[12px] text-faint">{s.count}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
+          <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}
+            className="flex items-center gap-3 h-11 px-3 rounded-xl font-semibold text-[14.5px] text-muted hover:bg-sunken hover:text-ink transition">
+            <MoreHorizontal size={19} />
+            <span className="flex-1 text-left">Plus</span>
+            {!moreOpen && moreBadge > 0 && <span className="tabular text-[12px] font-bold min-w-[22px] h-[22px] px-1.5 rounded-full bg-copper text-onCopper flex items-center justify-center">{moreBadge}</span>}
+            <ChevronDown size={16} className={cx('transition-transform', moreOpen && 'rotate-180')} />
+          </button>
+          {moreOpen && (
+            <div className="flex flex-col gap-0.5 animate-fade-up">
+              {MORE.map(({ to, label, icon: Icon }) => (
+                <NavLink key={to} to={to}
+                  className={({ isActive }) => cx('flex items-center gap-3 h-10 pl-6 pr-3 rounded-xl font-semibold text-[14px] transition',
+                    isActive ? 'bg-ink text-bg' : 'text-muted hover:bg-sunken hover:text-ink')}>
+                  <Icon size={17} strokeWidth={2} />
+                  <span className="flex-1">{label}</span>
+                  {badgeOf(to) > 0 && <span className="tabular text-[12px] font-bold min-w-[22px] h-[22px] px-1.5 rounded-full bg-copper text-onCopper flex items-center justify-center">{badgeOf(to)}</span>}
+                </NavLink>
+              ))}
+            </div>
+          )}
         </nav>
         <div className="mt-auto flex items-center gap-3 px-2 pt-4 border-t border-line">
           <Avatar profile={me} size={34} />
@@ -140,8 +190,8 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* ——— Navigation inférieure (mobile) ——— */}
       <nav className="lg:hidden fixed z-30 bottom-0 inset-x-0 bg-surface/92 backdrop-blur-xl border-t border-line pb-safe">
-        <div className="grid grid-cols-5 h-[var(--nav-h)]">
-          {NAV.filter((n) => !n.desktopOnly).map(({ to, label, icon: Icon, end }) => (
+        <div className="grid grid-cols-4 h-[var(--nav-h)]">
+          {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end}
               className={({ isActive }) => cx('relative flex flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors', isActive ? 'text-ink' : 'text-faint')}>
               {({ isActive }) => (
@@ -150,16 +200,34 @@ export function Shell({ children }: { children: ReactNode }) {
                     <Icon size={21} strokeWidth={isActive ? 2.3 : 1.9} />
                   </span>
                   {label}
-                  {badgeOf(to) > 0 && (
-                    <span className="absolute top-1.5 left-1/2 ml-2 tabular text-[10.5px] font-bold min-w-[18px] h-[18px] px-1 rounded-full bg-copper text-onCopper flex items-center justify-center">{badgeOf(to)}</span>
-                  )}
                 </>
               )}
             </NavLink>
           ))}
+          <button type="button" onClick={() => setMoreSheet(true)} className={cx('relative flex flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors', inMore ? 'text-ink' : 'text-faint')}>
+            <span className={cx('flex items-center justify-center w-12 h-7 rounded-full transition', inMore && 'bg-copper/12 text-copper-ink')}>
+              <MoreHorizontal size={21} strokeWidth={inMore ? 2.3 : 1.9} />
+            </span>
+            Plus
+            {moreBadge > 0 && (
+              <span className="absolute top-1.5 left-1/2 ml-2 tabular text-[10.5px] font-bold min-w-[18px] h-[18px] px-1 rounded-full bg-copper text-onCopper flex items-center justify-center">{moreBadge}</span>
+            )}
+          </button>
         </div>
       </nav>
 
+      <Sheet open={moreSheet} onClose={() => setMoreSheet(false)} title="Plus" size="sm">
+        <div className="flex flex-col gap-1 -mx-2">
+          {MORE.map(({ to, label, icon: Icon }) => (
+            <Link key={to} to={to} onClick={() => setMoreSheet(false)} className="flex items-center gap-3 min-h-[56px] px-3 rounded-xl font-semibold text-[15.5px] hover:bg-sunken transition">
+              <Icon size={20} className="text-muted" />
+              <span className="flex-1">{label}</span>
+              {badgeOf(to) > 0 && <span className="tabular text-[12px] font-bold min-w-[22px] h-[22px] px-1.5 rounded-full bg-copper text-onCopper flex items-center justify-center">{badgeOf(to)}</span>}
+              <ChevronRight size={18} className="text-faint" />
+            </Link>
+          ))}
+        </div>
+      </Sheet>
       <QuickAddProspect open={quickAdd} onClose={() => setQuickAdd(false)} />
       <TicketSheet open={!!ticketDraft} onClose={closeTicket} draft={ticketDraft} onCreated={(t) => nav(`/suivi/${t.id}`)} />
     </div>

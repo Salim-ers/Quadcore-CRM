@@ -1,28 +1,18 @@
 import type { DB, Project, Prospect, Task, Ticket, UUID } from './types'
-import { CLIENT_QUIET_DAYS, PROSPECT_CLOSED, TICKET_DONE, TICKET_WAIT_DAYS, ticketPriority } from './constants'
+import { CLIENT_QUIET_DAYS, PROSPECT_CLOSED, TICKET_DONE, TICKET_WAIT_DAYS, prospectStep, siteStep, ticketPriority } from './constants'
 import { addDaysStr, endOfWeekStr, todayStr } from './dates'
 
-export const activeProspects = (db: DB) => db.prospects.filter((p) => !p.archived && !PROSPECT_CLOSED.includes(p.status))
 export const liveProjects = (db: DB) => db.projects.filter((p) => !p.archived)
 
 export const needsFollowUp = (p: Prospect, today = todayStr()) =>
   !p.archived && !PROSPECT_CLOSED.includes(p.status) && (p.status === 'a_relancer' || (!!p.next_follow_up && p.next_follow_up <= today))
 
-export function dashboardCounts(db: DB) {
-  const act = activeProspects(db)
-  const proj = liveProjects(db)
-  const by = (...s: Project['status'][]) => proj.filter((p) => s.includes(p.status)).length
-  return {
-    active: act.length,
-    toContact: act.filter((p) => p.status === 'a_prospecter').length,
-    toFollowUp: act.filter((p) => needsFollowUp(p)).length,
-    demosSent: by('demo_envoyee'),
-    inCreation: by('demo_creation', 'dev_final'),
-    awaitingValidation: by('attente_validation'),
-    needsRevisions: by('modifs_demandees'),
-    validated: by('demo_validee', 'pret_livrer'),
-    delivered: by('livre', 'maintenance'),
-  }
+/** Combien de dossiers à chaque étape du parcours */
+export function stepCounts(db: DB) {
+  const c = { prospect: 0, vu: 0, accepte: 0, refuse: 0, en_cours: 0, livre: 0 }
+  for (const p of db.prospects) if (!p.archived) c[prospectStep(p.status)]++
+  for (const p of liveProjects(db)) c[siteStep(p.status)]++
+  return c
 }
 
 export type TodayItem =
@@ -30,7 +20,6 @@ export type TodayItem =
   | { kind: 'followup'; id: string; prospect: Prospect; late: boolean }
   | { kind: 'revisions'; id: string; project: Project; remaining: number; total: number }
   | { kind: 'delivery'; id: string; project: Project; late: boolean }
-  | { kind: 'validation'; id: string; project: Project; days: number }
   | { kind: 'ticket'; id: string; ticket: Ticket; late: boolean }
   | { kind: 'ticket_wait'; id: string; ticket: Ticket; days: number }
 
@@ -47,16 +36,6 @@ export const ticketRef = (t: Pick<Ticket, 'number'>) => (t.number ? `#${t.number
 export function liveTickets(db: DB) {
   const archived = new Set(db.prospects.filter((p) => p.archived).map((p) => p.id))
   return db.tickets.filter((t) => !archived.has(t.prospect_id))
-}
-
-export function ticketCounts(db: DB) {
-  const open = liveTickets(db).filter(isTicketOpen)
-  return {
-    open: open.length,
-    late: open.filter((t) => isTicketLate(t)).length,
-    waiting: open.filter((t) => t.status === 'attente_client').length,
-    unassigned: open.filter((t) => !t.assignee_id).length,
-  }
 }
 
 export type TicketView = 'ouverts' | 'mine' | 'unassigned' | 'late' | 'attente' | 'termines'
@@ -152,12 +131,8 @@ export function todayItems(db: DB, userId: UUID | null): TodayItem[] {
       const mineRevs = revs.filter((r) => mine(r.assignee_id) && r.status !== 'termine')
       if (mineRevs.length) items.push({ kind: 'revisions', id: 'r' + pr.id, project: pr, remaining: mineRevs.length, total: revs.length })
     }
-    if (mine(pr.owner_id) && pr.due_date && pr.due_date <= addDaysStr(2) && !['livre', 'maintenance', 'demo_refusee'].includes(pr.status)) {
+    if (mine(pr.owner_id) && pr.due_date && pr.due_date <= addDaysStr(2) && siteStep(pr.status) === 'en_cours') {
       items.push({ kind: 'delivery', id: 'd' + pr.id, project: pr, late: pr.due_date < today })
-    }
-    if (mine(pr.owner_id) && pr.status === 'attente_validation') {
-      const days = Math.floor((Date.now() - new Date(pr.updated_at).getTime()) / 864e5)
-      if (days >= 3) items.push({ kind: 'validation', id: 'v' + pr.id, project: pr, days })
     }
   }
 
@@ -177,7 +152,7 @@ export function todayItems(db: DB, userId: UUID | null): TodayItem[] {
   const rank = (i: TodayItem) =>
     ('late' in i && i.late ? 0 : 10) +
     ((i.kind === 'task' && i.task.priority === 'haute') || (i.kind === 'ticket' && i.ticket.priority === 'urgente') ? 0 : 1) +
-    ({ ticket: 0, followup: 1, task: 2, revisions: 3, delivery: 4, validation: 5, ticket_wait: 5 } as const)[i.kind]
+    ({ ticket: 0, followup: 1, task: 2, revisions: 3, delivery: 4, ticket_wait: 5 } as const)[i.kind]
   return items.sort((a, b) => rank(a) - rank(b))
 }
 

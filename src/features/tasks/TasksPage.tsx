@@ -71,7 +71,7 @@ export function TasksPage() {
           groups.map((g) => (
             <div key={g.key} className="mb-5">
               {g.key && <p className={cx('section-title mb-2.5', g.key === 'En retard' && 'text-danger')}>{g.key} · {g.items.length}</p>}
-              <div className="grid gap-2 lg:grid-cols-2">{g.items.map((t) => <TaskRow key={t.id} task={t} onOpen={(task) => setSheet({ task })} />)}</div>
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">{g.items.map((t) => <TaskRow key={t.id} task={t} onOpen={(task) => setSheet({ task })} />)}</div>
             </div>
           ))
         )}

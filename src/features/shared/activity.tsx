@@ -16,11 +16,11 @@ export function describeActivity(a: Activity, actor?: Profile, withSubject = tru
   const S = (x: ReactNode) => (name ? <> {x} {name}</> : null)
   switch (a.type) {
     case 'prospect_added': return { icon: <Plus size={15} />, tone: 'bg-stone-500/12 text-stone-700 dark:text-stone-300', text: <>{who} a ajouté {name ?? 'ce prospect'}</> }
-    case 'prospect_contacted': return { icon: <PhoneOutgoing size={15} />, tone: 'bg-sky-600/12 text-sky-800 dark:text-sky-300', text: <>{who} a contacté {name ?? 'le prospect'}</> }
-    case 'prospect_won': return { icon: <Trophy size={15} />, tone: 'bg-emerald-600/12 text-emerald-800 dark:text-emerald-300', text: <>{who} a gagné {name ?? 'ce client'}</> }
-    case 'prospect_lost': return { icon: <XCircle size={15} />, tone: 'bg-rose-600/12 text-rose-800 dark:text-rose-300', text: <>{who} a classé {name ?? 'le prospect'} en perdu{m.reason ? <span className="text-muted"> — {m.reason}</span> : null}</> }
+    case 'prospect_contacted': return { icon: <PhoneOutgoing size={15} />, tone: 'bg-sky-600/12 text-sky-800 dark:text-sky-300', text: <>{who} a vu {name ?? 'le client'}</> }
+    case 'prospect_won': return { icon: <Trophy size={15} />, tone: 'bg-emerald-600/12 text-emerald-800 dark:text-emerald-300', text: <>{name ?? 'Le client'} a accepté <span className="text-muted">· {actor?.first_name}</span></> }
+    case 'prospect_lost': return { icon: <XCircle size={15} />, tone: 'bg-rose-600/12 text-rose-800 dark:text-rose-300', text: <>{name ?? 'Le client'} a refusé{m.reason ? <span className="text-muted"> — {m.reason}</span> : null}</> }
     case 'prospect_status': return { icon: <ArrowRight size={15} />, tone: 'bg-sunken text-muted', text: <>{who} a passé {name ?? 'le prospect'} en <b className="font-semibold">{pStatus(m.to)}</b></> }
-    case 'project_created': return { icon: <FolderPlus size={15} />, tone: 'bg-copper/12 text-copper-ink', text: <>{who} a créé le projet {name ?? ''}</> }
+    case 'project_created': return { icon: <FolderPlus size={15} />, tone: 'bg-copper/12 text-copper-ink', text: <>{who} a lancé {name ?? 'le site'}</> }
     case 'demo_sent': return { icon: <Send size={15} />, tone: 'bg-copper/12 text-copper-ink', text: <>{who} a envoyé la démo{name ? <> — {name}</> : null}</> }
     case 'revision_requested': {
       const c = Number(m.count ?? 1)
@@ -29,7 +29,7 @@ export function describeActivity(a: Activity, actor?: Profile, withSubject = tru
     case 'revisions_done': return { icon: <Wrench size={15} />, tone: 'bg-teal-600/12 text-teal-800 dark:text-teal-300', text: <>{who} a terminé les retouches{S('de')}</> }
     case 'demo_validated': return { icon: <BadgeCheck size={15} />, tone: 'bg-emerald-600/12 text-emerald-800 dark:text-emerald-300', text: <>Démo validée{S('pour')} <span className="text-muted">· {actor?.first_name}</span></> }
     case 'site_delivered': return { icon: <PackageCheck size={15} />, tone: 'bg-ink text-bg', text: <>{who} a livré {name ?? 'le site'}</> }
-    case 'project_status': return { icon: <ArrowRight size={15} />, tone: 'bg-sunken text-muted', text: <>{who} a passé {name ?? 'le projet'} en <b className="font-semibold">{jStatus(m.to)}</b></> }
+    case 'project_status': return { icon: <ArrowRight size={15} />, tone: 'bg-sunken text-muted', text: <>{who} a passé {name ?? 'le site'} en <b className="font-semibold">{jStatus(m.to)}</b></> }
     case 'follow_up_done': return { icon: <RefreshCw size={15} />, tone: 'bg-sky-600/12 text-sky-800 dark:text-sky-300', text: <>{who} a fait la relance : <span className="text-muted">{m.title}</span></> }
     case 'task_done': return { icon: <CheckSquare size={15} />, tone: 'bg-sunken text-muted', text: <>{who} a terminé <span className="text-muted">« {m.title} »</span></> }
     case 'ticket_opened': return { icon: <Ticket size={15} />, tone: 'bg-sky-600/12 text-sky-800 dark:text-sky-300', text: <>{who} a ouvert le ticket #{m.number}{name ? <> — {name}</> : null}</> }

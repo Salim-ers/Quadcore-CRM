@@ -1,55 +1,60 @@
 import { memo } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, PencilRuler, Store } from 'lucide-react'
+import { Check, ExternalLink, PencilRuler, Store, TriangleAlert } from 'lucide-react'
 import type { Project } from '../../lib/types'
-import { PROJECT_TYPES, labelOf, projectStatus } from '../../lib/constants'
+import { siteStep } from '../../lib/constants'
 import { useStore } from '../../data/store'
-import { useShallow } from 'zustand/react/shallow'
-import { Avatar, Badge, ProgressBar, cx } from '../../components/ui'
+import { Avatar, Badge } from '../../components/ui'
 import { DueChip } from '../../components/bits'
+import { useUi } from '../../components/Shell'
+import { isTicketOpen } from '../../lib/derive'
+import { normalizeUrl } from '../../lib/links'
+import { moveSite } from './flows'
 
-export const ProjectCard = memo(function ProjectCard({ project, onStatus, compact, hideClient }: {
-  project: Project; onStatus?: (p: Project) => void; compact?: boolean; hideClient?: boolean
-}) {
-  const st = projectStatus(project.status)
+/** Carte d'un site : en cours, le bouton le marque livré ; livré, le lien l'ouvre. */
+export const ProjectCard = memo(function ProjectCard({ project, hideClient }: { project: Project; hideClient?: boolean }) {
+  const step = siteStep(project.status)
   const owner = useStore((s) => s.db.profiles.find((p) => p.id === project.owner_id))
   const client = useStore((s) => (project.prospect_id ? s.db.prospects.find((p) => p.id === project.prospect_id) : undefined))
-  const prog = useStore(useShallow((s) => {
-    const r = s.db.revisions.filter((x) => x.project_id === project.id && x.round === project.revision_round)
-    return { done: r.filter((x) => x.status === 'termine').length, total: r.length }
-  }))
-  const showRevs = prog.total > 0 && ['modifs_demandees', 'attente_validation', 'demo_envoyee'].includes(project.status)
-  const done = ['livre', 'maintenance'].includes(project.status)
+  const pending = useStore((s) => s.db.revisions.filter((x) => x.project_id === project.id && x.status !== 'termine').length)
+  const problems = useStore((s) => s.db.tickets.filter((t) => t.project_id === project.id && isTicketOpen(t)).length)
+  const newTicket = useUi((s) => s.newTicket)
+  const url = normalizeUrl(project.final_url ?? project.demo_url)
 
   return (
-    <div className={cx('card relative transition hover:border-copper/30', compact ? 'p-3' : 'p-3.5')}>
+    <div className="card relative p-3.5 transition hover:border-copper/30">
       <Link to={`/projets/${project.id}`} className="absolute inset-0 rounded-2xl" aria-label={`Ouvrir ${project.name}`} />
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <p className={cx('font-bold truncate', compact ? 'text-[14.5px]' : 'text-[16px]')}>{project.name}</p>
-          <p className="text-[13px] text-muted mt-0.5 flex items-center gap-1.5 truncate">
-            {!hideClient && client && <><Store size={13} className="shrink-0" /><span className="truncate">{client.name}</span><span className="text-faint">·</span></>}
-            <span className="shrink-0">{labelOf(PROJECT_TYPES, project.type)}</span>
-          </p>
-        </div>
-        {owner && <Avatar profile={owner} size={compact ? 24 : 28} />}
-      </div>
-      {showRevs && (
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-[12.5px] mb-1.5">
-            <span className="inline-flex items-center gap-1.5 font-semibold text-muted"><PencilRuler size={13} />Retouches</span>
-            <span className="tabular font-bold">{prog.done} / {prog.total}</span>
+          <p className="font-bold text-[16px] truncate">{project.name}</p>
+          {!hideClient && client && <p className="text-[13px] text-muted mt-0.5 flex items-center gap-1.5"><Store size={13} className="shrink-0" /><span className="truncate">{client.name}</span></p>}
+          <div className="flex items-center gap-3 mt-1 flex-wrap empty:hidden">
+            {step === 'en_cours' && <DueChip date={project.due_date} />}
+            {pending > 0 && <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-orange-700 dark:text-orange-300"><PencilRuler size={13} />{pending} retouche{pending > 1 ? 's' : ''}</span>}
+            {problems > 0 && <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-danger"><TriangleAlert size={13} />{problems} problème{problems > 1 ? 's' : ''}</span>}
           </div>
-          <ProgressBar value={prog.done} total={prog.total} tone={prog.done === prog.total ? 'green' : 'orange'} />
         </div>
-      )}
-      <div className="flex items-center gap-2 mt-3 flex-wrap">
-        {onStatus ? (
-          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onStatus(project) }} className="relative z-10 -my-2 py-2 pr-1" aria-label={`Changer l'avancement (${st.label})`}>
-            <Badge tone={st.tone}>{st.short ?? st.label}<ChevronDown size={13} className="-mr-1 opacity-60" /></Badge>
+        {owner && <Avatar profile={owner} size={28} />}
+      </div>
+      <div className="flex items-center gap-2 mt-3">
+        {step === 'en_cours' ? (
+          <button type="button" onClick={() => moveSite(project, 'livre')}
+            className="relative z-10 flex-1 h-11 rounded-xl bg-sunken hover:bg-line/60 text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 transition active:scale-[.98]">
+            <Check size={17} />Site livré
           </button>
-        ) : <Badge tone={st.tone}>{st.short ?? st.label}</Badge>}
-        {!done && <DueChip date={project.due_date} />}
+        ) : <Badge tone="green">Livré</Badge>}
+        <div className="flex items-center gap-2 ml-auto">
+          {url && (
+            <a href={url} target="_blank" rel="noopener noreferrer" className="relative z-10 h-11 px-3 rounded-xl bg-sunken hover:bg-line/60 text-[14px] font-semibold inline-flex items-center gap-1.5 transition">
+              Voir<ExternalLink size={15} />
+            </a>
+          )}
+          <button type="button" aria-label={`Signaler un problème sur ${project.name}`} title="Signaler un problème"
+            onClick={() => newTicket({ prospect_id: project.prospect_id ?? undefined, project_id: project.id, type: 'incident' })}
+            className="relative z-10 w-11 h-11 rounded-xl bg-sunken hover:bg-line/60 text-muted inline-flex items-center justify-center transition">
+            <TriangleAlert size={17} />
+          </button>
+        </div>
       </div>
     </div>
   )

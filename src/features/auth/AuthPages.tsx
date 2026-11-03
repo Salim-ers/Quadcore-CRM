@@ -59,7 +59,7 @@ export function LoginPage() {
   return (
     <AuthFrame>
       <h1 className="h-display text-[30px] leading-tight">Connexion</h1>
-      <p className="text-muted mt-1.5 mb-7">Retrouvez vos prospects et vos projets.</p>
+      <p className="text-muted mt-1.5 mb-7">Retrouvez vos prospects et vos sites.</p>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <Field label="E-mail"><Input type="email" inputMode="email" autoComplete="username" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
         <Field label="Mot de passe">

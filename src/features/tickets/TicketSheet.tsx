@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import { ChevronRight, Plus, Search, Store } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Search, Store } from 'lucide-react'
 import { Field, Input, Select, Sheet, TextArea, cx } from '../../components/ui'
 import { ChannelIcon, OwnerButton, ProspectThumb } from '../../components/bits'
 import { CHANNELS, TICKET_PRIORITIES, TICKET_TYPES, prospectStatus } from '../../lib/constants'
@@ -9,7 +9,7 @@ import { useStore } from '../../data/store'
 import { addDaysStr, todayStr } from '../../lib/dates'
 import { dueForPriority, searchMatch } from '../../lib/derive'
 
-export interface TicketDraft { prospect_id?: UUID; project_id?: UUID | null }
+export interface TicketDraft { prospect_id?: UUID; project_id?: UUID | null; type?: TicketType }
 
 /** Création / édition d'un ticket (ticket = existant, draft = nouveau) */
 export function TicketSheet({ open, onClose, ticket, draft, onCreated }: {
@@ -31,6 +31,7 @@ export function TicketSheet({ open, onClose, ticket, draft, onCreated }: {
   const [assigneeTouched, setAssigneeTouched] = useState(false)
   const [projectId, setProjectId] = useState('')
   const [busy, setBusy] = useState(false)
+  const [more, setMore] = useState(false)
 
   const client = prospects.find((p) => p.id === clientId)
   const projects = useMemo(() => allProjects.filter((p) => p.prospect_id === clientId && !p.archived), [allProjects, clientId])
@@ -41,8 +42,9 @@ export function TicketSheet({ open, onClose, ticket, draft, onCreated }: {
     setClientId(ticket?.prospect_id ?? draft?.prospect_id ?? null)
     setSubject(ticket?.subject ?? '')
     setDescription(ticket?.description ?? '')
-    setType(ticket?.type ?? 'demande')
+    setType(ticket?.type ?? draft?.type ?? 'demande')
     setChannel(ticket?.channel ?? null)
+    setMore(!!ticket)
     setPriority(ticket?.priority ?? 'normale')
     setDue(ticket ? ticket.due_date ?? '' : dueForPriority('normale'))
     setDueTouched(false)
@@ -84,7 +86,7 @@ export function TicketSheet({ open, onClose, ticket, draft, onCreated }: {
 
   return (
     <>
-      <Sheet open={open} onClose={onClose} title={ticket ? 'Modifier le ticket' : 'Nouveau ticket'}
+      <Sheet open={open} onClose={onClose} title={ticket ? 'Modifier le ticket' : draft?.type === 'incident' ? 'Signaler un problème' : 'Nouveau ticket'}
         footer={<button className="btn-primary w-full" disabled={!subject.trim() || !clientId || busy} onClick={save}>{ticket ? 'Enregistrer' : 'Créer le ticket'}</button>}>
         <div className="flex flex-col gap-4">
           <div>
@@ -95,47 +97,56 @@ export function TicketSheet({ open, onClose, ticket, draft, onCreated }: {
               <ChevronRight size={17} className="text-faint shrink-0" />
             </button>
           </div>
-          <Field label="Objet *"><Input autoFocus={!ticket} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ex. Le formulaire de contact ne fonctionne plus" enterKeyHint="done" /></Field>
-          <div>
-            <span className="field-label">Type</span>
-            <div className="flex gap-2 flex-wrap">
-              {TICKET_TYPES.map((t) => <button key={t.value} type="button" onClick={() => setType(t.value)} className={cx('chip', type === t.value && 'chip-on')}>{t.label}</button>)}
-            </div>
-          </div>
-          <div>
-            <span className="field-label">Reçu par</span>
-            <div className="flex gap-2 flex-wrap">
-              {CHANNELS.map((c) => (
-                <button key={c.value} type="button" onClick={() => setChannel(channel === c.value ? null : c.value)} className={cx('chip', channel === c.value && 'chip-on')}>
-                  <ChannelIcon channel={c.value} />{c.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <Field label="Quel est le problème ? *"><Input autoFocus={!ticket} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ex. Le formulaire ne marche plus" enterKeyHint="done" /></Field>
+          <Field label="Détail"><TextArea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ce que le client a dit, avec ses mots…" /></Field>
           <div>
             <span className="field-label">Priorité</span>
             <div className="grid grid-cols-4 gap-1.5">
               {TICKET_PRIORITIES.map((p) => <button key={p.value} type="button" onClick={() => pickPriority(p.value)} className={cx('chip justify-center h-[46px] px-1.5', priority === p.value && 'chip-on')}>{p.label}</button>)}
             </div>
           </div>
-          <div>
-            <span className="field-label">À traiter avant</span>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 mb-2">
-              {quick.map((q) => <button key={q.l} type="button" onClick={() => { setDue(q.v); setDueTouched(true) }} className={cx('chip', due === q.v && 'chip-on')}>{q.l}</button>)}
-              <button type="button" onClick={() => { setDue(''); setDueTouched(true) }} className={cx('chip', !due && 'chip-on')}>Sans date</button>
+
+          <button type="button" onClick={() => setMore((m) => !m)} aria-expanded={more} className="flex items-center gap-1.5 text-[14px] font-semibold text-muted self-start min-h-[40px]">
+            <ChevronDown size={17} className={cx('transition', more && 'rotate-180')} /> Plus de détails
+          </button>
+
+          {more && (
+            <div className="flex flex-col gap-4 animate-fade-up">
+              <div>
+                <span className="field-label">Type</span>
+                <div className="flex gap-2 flex-wrap">
+                  {TICKET_TYPES.map((t) => <button key={t.value} type="button" onClick={() => setType(t.value)} className={cx('chip', type === t.value && 'chip-on')}>{t.label}</button>)}
+                </div>
+              </div>
+              <div>
+                <span className="field-label">Reçu par</span>
+                <div className="flex gap-2 flex-wrap">
+                  {CHANNELS.map((c) => (
+                    <button key={c.value} type="button" onClick={() => setChannel(channel === c.value ? null : c.value)} className={cx('chip', channel === c.value && 'chip-on')}>
+                      <ChannelIcon channel={c.value} />{c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <span className="field-label">À traiter avant</span>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 mb-2">
+                  {quick.map((q) => <button key={q.l} type="button" onClick={() => { setDue(q.v); setDueTouched(true) }} className={cx('chip', due === q.v && 'chip-on')}>{q.l}</button>)}
+                  <button type="button" onClick={() => { setDue(''); setDueTouched(true) }} className={cx('chip', !due && 'chip-on')}>Sans date</button>
+                </div>
+                <Input type="date" value={due} onChange={(e) => { setDue(e.target.value); setDueTouched(true) }} />
+              </div>
+              <Field label="Responsable"><OwnerButton value={assignee} onChange={(v) => { setAssignee(v); setAssigneeTouched(true) }} /></Field>
+              {projects.length > 0 && (
+                <Field label="Site concerné">
+                  <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+                    <option value="">Aucun</option>
+                    {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </Select>
+                </Field>
+              )}
             </div>
-            <Input type="date" value={due} onChange={(e) => { setDue(e.target.value); setDueTouched(true) }} />
-          </div>
-          <Field label="Responsable"><OwnerButton value={assignee} onChange={(v) => { setAssignee(v); setAssigneeTouched(true) }} /></Field>
-          {projects.length > 0 && (
-            <Field label="Projet concerné">
-              <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-                <option value="">Aucun</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </Select>
-            </Field>
           )}
-          <Field label="Détail"><TextArea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ce que le client a demandé, avec ses mots…" /></Field>
         </div>
       </Sheet>
       <ClientPicker open={picking} onClose={() => setPicking(false)} value={clientId} onPick={setClientId} />
@@ -179,7 +190,7 @@ function ClientPicker({ open, onClose, value, onPick }: { open: boolean; onClose
               <ProspectThumb name={p.name} category={p.category} size={36} />
               <span className="flex-1 min-w-0">
                 <span className="block font-semibold text-[15px] truncate">{p.name}</span>
-                <span className="block text-[12.5px] text-muted truncate">{p.status === 'gagne' ? 'Client' : `Prospect · ${prospectStatus(p.status).short ?? prospectStatus(p.status).label}`}{p.city ? ` · ${p.city}` : ''}</span>
+                <span className="block text-[12.5px] text-muted truncate">{p.status === 'gagne' ? 'Client' : prospectStatus(p.status).label}{p.city ? ` · ${p.city}` : ''}</span>
               </span>
             </button>
           ))}

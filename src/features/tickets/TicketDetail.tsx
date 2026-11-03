@@ -34,7 +34,7 @@ export function TicketDetail() {
     return (
       <>
         <PageHeader title="Ticket" back="/suivi" />
-        <Page><Empty icon={<TicketIcon size={26} />} title="Ticket introuvable" text="Il a peut-être été supprimé par un administrateur." action={<Link className="btn-soft" to="/suivi">Retour au suivi</Link>} /></Page>
+        <Page><Empty icon={<TicketIcon size={26} />} title="Ticket introuvable" text="Il a peut-être été supprimé par un administrateur." action={<Link className="btn-soft" to="/suivi">Retour aux tickets</Link>} /></Page>
       </>
     )
   }
@@ -91,7 +91,7 @@ export function TicketDetail() {
                 </div>
                 <div><dt className="text-muted">Ouvert</dt><dd className="font-semibold mt-0.5">{relTime(t.created_at)}{author ? ` · ${author.first_name}` : ''}</dd></div>
                 {project && (
-                  <div><dt className="text-muted">Projet</dt><dd className="font-semibold mt-0.5"><Link to={`/projets/${project.id}`} className="inline-flex items-center gap-1.5 hover:text-copper-ink"><FolderKanban size={14} />{project.name}</Link></dd></div>
+                  <div><dt className="text-muted">Site</dt><dd className="font-semibold mt-0.5"><Link to={`/projets/${project.id}`} className="inline-flex items-center gap-1.5 hover:text-copper-ink"><FolderKanban size={14} />{project.name}</Link></dd></div>
                 )}
               </dl>
             </div>

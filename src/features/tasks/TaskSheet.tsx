@@ -102,7 +102,7 @@ export function TaskSheet({ open, onClose, task, draft }: { open: boolean; onClo
           <Select value={link} onChange={(e) => setLink(e.target.value)}>
             <option value="">Aucun dossier</option>
             <optgroup label="Prospects">{linkOptions.p.map((p) => <option key={p.id} value={'p:' + p.id}>{p.name}</option>)}</optgroup>
-            <optgroup label="Projets">{linkOptions.j.map((p) => <option key={p.id} value={'j:' + p.id}>{p.name}</option>)}</optgroup>
+            <optgroup label="Sites">{linkOptions.j.map((p) => <option key={p.id} value={'j:' + p.id}>{p.name}</option>)}</optgroup>
           </Select>
         </Field>
         {link.startsWith('p:') && (

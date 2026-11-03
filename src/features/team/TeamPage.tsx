@@ -8,7 +8,7 @@ import { Avatar, Badge, Field, Input, Section, Sheet, confirmDialog, cx } from '
 import { backend, toast, updateRow, useIsAdmin, useMe, useStore } from '../../data/store'
 import { archive } from '../../data/actions'
 import { fullName } from '../../lib/derive'
-import { MEMBER_COLORS, PROJECT_DONE, PROSPECT_CLOSED, TEAM_ROSTER, TICKET_DONE } from '../../lib/constants'
+import { MEMBER_COLORS, PROJECT_DONE, PROSPECT_CLOSED, TEAM_ROSTER } from '../../lib/constants'
 import { getTheme, setTheme, type ThemePref } from '../../lib/theme'
 import { useNotificationPermission } from './notifications'
 import { resetDemo } from '../../data/demoBackend'
@@ -28,9 +28,6 @@ export function TeamPage() {
   const stats = useMemo(() => new Map(db.profiles.map((p) => [p.id, {
     prospects: db.prospects.filter((x) => x.owner_id === p.id && !x.archived && !PROSPECT_CLOSED.includes(x.status)).length,
     projects: db.projects.filter((x) => x.owner_id === p.id && !x.archived && !PROJECT_DONE.includes(x.status)).length,
-    tasks: db.tasks.filter((x) => x.assignee_id === p.id && x.status !== 'termine').length,
-    tickets: db.tickets.filter((x) => x.assignee_id === p.id && !TICKET_DONE.includes(x.status)).length,
-    won: db.prospects.filter((x) => x.owner_id === p.id && x.status === 'gagne').length,
   }])), [db])
 
   const archived = [...db.prospects.filter((p) => p.archived).map((p) => ({ kind: 'prospects' as const, id: p.id, name: p.name })),
@@ -54,7 +51,7 @@ export function TeamPage() {
 
         {/* ——— Membres ——— */}
         <Section title="Collaborateurs" action={admin && <button className="btn-ghost h-9 min-h-0 px-3 text-copper-ink" onClick={() => setInvite(true)}><UserPlus size={16} />Inviter</button>}>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {members.map((p) => {
               const s = stats.get(p.id)!
               return (
@@ -66,7 +63,7 @@ export function TeamPage() {
                       {fullName(p)}{p.role === 'admin' && <Shield size={13} className="text-copper-ink" aria-label="Administrateur" />}
                       {!p.active && <span className="text-[12px] font-semibold text-faint">· désactivé</span>}
                     </p>
-                    <p className="text-[12.5px] text-muted tabular">{s.tickets} tickets · {s.prospects} prospects · {s.projects} projets · {s.tasks} tâches · {s.won} gagnés</p>
+                    <p className="text-[12.5px] text-muted tabular">{s.prospects} prospect{s.prospects > 1 ? 's' : ''} · {s.projects} site{s.projects > 1 ? 's' : ''} en cours</p>
                   </div>
                   {admin && p.id !== me?.id && <ChevronRight size={18} className="text-faint" />}
                 </button>
@@ -125,7 +122,7 @@ export function TeamPage() {
                   <div key={a.id} className="flex items-center gap-3 px-4 py-2.5">
                     <Archive size={16} className="text-faint" />
                     <Link to={a.kind === 'prospects' ? `/prospects/${a.id}` : `/projets/${a.id}`} className="flex-1 min-w-0 truncate font-semibold text-[14.5px]">{a.name}</Link>
-                    <span className="text-[12px] text-faint">{a.kind === 'prospects' ? 'Prospect' : 'Projet'}</span>
+                    <span className="text-[12px] text-faint">{a.kind === 'prospects' ? 'Prospect' : 'Site'}</span>
                     <button className="icon-btn w-10 h-10" onClick={() => archive(a.kind, a.id, false)} aria-label={`Restaurer ${a.name}`}><ArchiveRestore size={17} /></button>
                   </div>
                 ))}
@@ -257,7 +254,7 @@ function MemberSheet({ member, onClose }: { member: Profile | null; onClose: () 
           </div>
           <div className="text-[13px] text-muted leading-relaxed bg-sunken rounded-xl p-3">
             <b className="text-ink">Administrateur :</b> gère les membres, les paramètres et l’archivage.<br />
-            <b className="text-ink">Collaborateur :</b> crée et modifie prospects, projets, tâches, commentaires et documents.
+            <b className="text-ink">Collaborateur :</b> crée et modifie prospects, sites, tickets, tâches, commentaires et documents.
           </div>
           {p.active ? (
             <button className="btn-danger" onClick={async () => {

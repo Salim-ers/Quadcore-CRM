@@ -42,7 +42,7 @@ export async function createProject(input: Partial<Project>) {
   return insertRow('projects', {
     owner_id: me()?.id ?? null,
     type: 'vitrine',
-    status: 'a_preparer',
+    status: 'dev_final',
     billing_status: 'non_facture',
     revision_round: 1,
     archived: false,

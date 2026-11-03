@@ -59,7 +59,7 @@ export function TicketsPage() {
 
   return (
     <>
-      <PageHeader title="Suivi" subtitle={subtitle}
+      <PageHeader title="Tickets" subtitle={subtitle}
         actions={
           <>
             {tab === 'tickets' && (
@@ -106,9 +106,9 @@ export function TicketsPage() {
         {tab === 'clients' ? (
           clients.length === 0 ? (
             <Empty icon={<Users size={26} />} title={q ? 'Aucun résultat' : 'Aucun client dans cette vue'}
-              text={q ? 'Essayez un autre mot-clé.' : 'Une fiche devient cliente dès qu’elle passe en « Gagné » dans Prospects.'} />
+              text={q ? 'Essayez un autre mot-clé.' : 'Une fiche devient cliente dès qu’elle passe en « Accepté » dans Prospects.'} />
           ) : (
-            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">{clients.map((s) => <ClientCard key={s.client.id} s={s} />)}</div>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">{clients.map((s) => <ClientCard key={s.client.id} s={s} />)}</div>
           )
         ) : (
           <>
@@ -124,7 +124,7 @@ export function TicketsPage() {
                   text={q ? 'Essayez un autre mot-clé.' : 'Notez ici chaque demande client : appel, message WhatsApp, e-mail…'}
                   action={!q && <button className="btn-primary" onClick={() => newTicket()}><Plus size={18} />Nouveau ticket</button>} />
               ) : (
-                <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">{list.map((t) => <TicketCard key={t.id} ticket={t} onStatus={setPick} />)}</div>
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">{list.map((t) => <TicketCard key={t.id} ticket={t} onStatus={setPick} />)}</div>
               )}
             </div>
           </>
@@ -160,7 +160,7 @@ const ClientCard = memo(function ClientCard({ s }: { s: ClientSummary }) {
       <div className="flex items-center gap-x-2.5 gap-y-1.5 mt-3 flex-wrap">
         {s.late > 0 && <Badge tone="rose">{s.late} en retard</Badge>}
         {s.open > 0 ? <Badge tone="amber">{s.open} ticket{s.open > 1 ? 's' : ''} ouvert{s.open > 1 ? 's' : ''}</Badge> : <Badge tone="green">Rien en cours</Badge>}
-        {site && <span className="inline-flex items-center gap-1 text-[12.5px] text-muted"><Globe size={13} />{projectStatus(site.status).short ?? projectStatus(site.status).label}</span>}
+        {site && <span className="inline-flex items-center gap-1 text-[12.5px] text-muted"><Globe size={13} />{projectStatus(site.status).label}</span>}
       </div>
       <p className={cx('text-[12.5px] mt-2 font-semibold', s.quiet ? 'text-copper-ink' : 'text-faint')}>{s.quiet ? `À recontacter · ${lastLabel.toLowerCase()}` : lastLabel}</p>
     </div>

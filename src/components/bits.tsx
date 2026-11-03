@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import {
-  Coffee, Croissant, Globe, Hammer, Camera, Mail, MapPin, MessageCircle, MessagesSquare, Phone, Scissors, Shapes, ShoppingBag, UtensilsCrossed, BellPlus,
+  Coffee, Croissant, Globe, Hammer, Camera, Mail, MapPin, MessageCircle, MessagesSquare, Phone, Scissors, Shapes, ShoppingBag, UtensilsCrossed,
 } from 'lucide-react'
 import type { Category, Channel, Profile, UUID } from '../lib/types'
 import { mailLink, normalizeUrl, telLink, whatsappLink } from '../lib/links'
@@ -35,31 +35,27 @@ export function ProspectThumb({ name, category, logoUrl, size = 44 }: { name: st
   )
 }
 
-/** Actions de contact via liens natifs (tel:, wa.me, mailto:, instagram.com) */
-export function ContactActions({ phone, email, instagramUrl, website, onFollowUp, compact }: {
-  phone: string | null; email: string | null; instagramUrl: string | null; website: string | null; onFollowUp?: () => void; compact?: boolean
+/** Actions de contact via liens natifs (tel:, wa.me, mailto:, instagram.com) — seules celles qu'on peut utiliser sont montrées */
+export function ContactActions({ phone, email, instagramUrl, website }: {
+  phone: string | null; email: string | null; instagramUrl: string | null; website: string | null
 }) {
-  const items: { label: string; icon: ReactNode; href: string | null; onClick?: () => void; external?: boolean }[] = [
+  const items: { label: string; icon: ReactNode; href: string | null; external?: boolean }[] = [
     { label: 'Appeler', icon: <Phone size={20} />, href: telLink(phone) },
     { label: 'WhatsApp', icon: <MessageCircle size={20} />, href: whatsappLink(phone), external: true },
     { label: 'Instagram', icon: <Camera size={20} />, href: instagramUrl, external: true },
     { label: 'E-mail', icon: <Mail size={20} />, href: mailLink(email) },
     { label: 'Site', icon: <Globe size={20} />, href: normalizeUrl(website), external: true },
   ]
-  if (onFollowUp) items.push({ label: 'Relance', icon: <BellPlus size={20} />, href: null, onClick: onFollowUp })
+  const usable = items.filter((it) => it.href)
+  if (!usable.length) return null
   return (
-    <div className={cx('grid gap-2', compact ? 'grid-cols-6' : 'grid-cols-3 sm:grid-cols-6')}>
-      {items.map((it) => {
-        const disabled = !it.href && !it.onClick
-        const cls = cx('flex flex-col items-center justify-center gap-1.5 min-h-[64px] rounded-2xl border text-[12px] font-semibold transition active:scale-[.97]',
-          disabled ? 'border-dashed border-line text-faint/70 pointer-events-none' : 'border-line bg-surface text-ink hover:border-copper/40',
-          it.label === 'Relance' && !disabled && 'bg-copper/8 border-copper/25 text-copper-ink')
-        return it.href ? (
-          <a key={it.label} href={it.href} className={cls} {...(it.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{it.icon}{it.label}</a>
-        ) : (
-          <button key={it.label} type="button" onClick={it.onClick} className={cls} disabled={disabled} aria-disabled={disabled}>{it.icon}{it.label}</button>
-        )
-      })}
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${usable.length}, minmax(0, 1fr))` }}>
+      {usable.map((it) => (
+        <a key={it.label} href={it.href!} {...(it.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+          className="flex flex-col items-center justify-center gap-1.5 min-h-[64px] rounded-2xl border border-line bg-surface text-ink text-[12px] font-semibold transition hover:border-copper/40 active:scale-[.97]">
+          {it.icon}{it.label}
+        </a>
+      ))}
     </div>
   )
 }

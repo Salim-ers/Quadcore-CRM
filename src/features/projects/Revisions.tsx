@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronDown, History, Image as ImageIcon, Loader, MessageSquare, Plus, Trash2, Undo2 } from 'lucide-react'
 import type { Project, Revision, WorkStatus } from '../../lib/types'
-import { useStore } from '../../data/store'
+import { toast, useStore } from '../../data/store'
 import { addRevision, deleteRevision, setRevisionStatus, updateRevision } from '../../data/actions'
-import { useProjectStatusFlow } from './flows'
+import { moveSite } from './flows'
 import { Avatar, Field, Input, ProgressBar, Sheet, TextArea, confirmDialog, cx } from '../../components/ui'
 import { DueChip, OwnerButton } from '../../components/bits'
-import { WORK_STATUSES } from '../../lib/constants'
+import { WORK_STATUSES, siteStep } from '../../lib/constants'
 import { Attachments, CommentComposer } from '../shared/Timeline'
 import { relTime, shortDate } from '../../lib/dates'
 
@@ -19,7 +19,6 @@ export function Revisions({ project }: { project: Project }) {
   const [text, setText] = useState('')
   const [open, setOpen] = useState<string | null>(null)
   const [showPast, setShowPast] = useState(false)
-  const flow = useProjectStatusFlow()
 
   const mine = useMemo(() => all.filter((r) => r.project_id === project.id).sort((a, b) => a.round - b.round || a.position - b.position || (a.created_at < b.created_at ? -1 : 1)), [all, project.id])
   const current = mine.filter((r) => r.round === project.revision_round)
@@ -39,6 +38,7 @@ export function Revisions({ project }: { project: Project }) {
     const lines = text.split('\n').map((l) => l.replace(/^[-•*\d.)\s]+/, '').trim()).filter(Boolean)
     if (!lines.length) return
     setText('')
+    if (siteStep(project.status) === 'livre') toast('Le site repasse en cours')
     // coller une liste (une retouche par ligne) crée plusieurs retouches d'un coup
     let p = project
     for (const l of lines) { await addRevision(p, l); p = useStore.getState().db.projects.find((x) => x.id === project.id) ?? p }
@@ -48,25 +48,24 @@ export function Revisions({ project }: { project: Project }) {
 
   return (
     <div>
-      <div className="card p-4">
-        <div className="flex items-end justify-between mb-2">
-          <div>
-            <p className="text-[13px] text-muted font-semibold">{allDone && project.status !== 'modifs_demandees' ? 'Dernière série' : 'Série en cours'}{project.revision_round > 1 ? ` · n° ${project.revision_round}` : ''}</p>
-            <p className="h-display text-[26px] leading-none mt-1 tabular">{done} <span className="text-faint">/ {current.length}</span> <span className="text-[15px] font-sans font-semibold text-muted">terminée{done > 1 ? 's' : ''}</span></p>
-          </div>
-          {current.length > 0 && <span className="text-[13px] font-bold tabular text-muted">{Math.round((done / current.length) * 100)} %</span>}
-        </div>
-        <ProgressBar value={done} total={current.length || 1} tone={allDone ? 'green' : 'orange'} />
+      <div>
+        {current.length > 0 && (
+          <>
+            <div className="flex items-end justify-between mb-2">
+              <p className="h-display text-[22px] leading-none tabular">{done} <span className="text-faint">/ {current.length}</span> <span className="text-[14px] font-sans font-semibold text-muted">terminée{done > 1 ? 's' : ''}</span></p>
+            </div>
+            <ProgressBar value={done} total={current.length} tone={allDone ? 'green' : 'orange'} />
+          </>
+        )}
 
-        {allDone && project.status === 'modifs_demandees' && (
+        {allDone && siteStep(project.status) === 'en_cours' && (
           <div className="mt-4 rounded-xl bg-emerald-600/8 border border-emerald-600/20 p-3.5 animate-fade-up">
             <p className="font-bold text-[14.5px] text-emerald-800 dark:text-emerald-300">Toutes les retouches sont terminées</p>
-            <p className="text-[13.5px] text-muted mt-0.5">Renvoyez la démo au client et repassez le projet en attente de validation.</p>
-            <button className="btn-dark w-full mt-3" onClick={() => flow.change(project, 'attente_validation')}>Repasser en attente de validation</button>
+            <button className="btn-dark w-full mt-3" onClick={() => moveSite(project, 'livre')}>Site livré</button>
           </div>
         )}
 
-        <ul className="mt-4 flex flex-col">
+        <ul className="mt-3 flex flex-col">
           {current.map((r) => <RevisionItem key={r.id} r={r} counts={count(r.id)} onOpen={() => setOpen(r.id)} />)}
         </ul>
 
@@ -75,7 +74,7 @@ export function Revisions({ project }: { project: Project }) {
             className="min-h-[46px]" onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); add() } }} />
           <button className="btn-primary w-[46px] px-0 shrink-0" onClick={add} disabled={!text.trim()} aria-label="Ajouter la retouche"><Plus size={20} /></button>
         </div>
-        <p className="text-[12px] text-faint mt-1.5">Astuce : collez la liste envoyée par le client, une ligne = une retouche.</p>
+        <p className="text-[12px] text-faint mt-1.5">Collez la liste du client : une ligne = une retouche.</p>
       </div>
 
       {past.length > 0 && (
@@ -94,7 +93,6 @@ export function Revisions({ project }: { project: Project }) {
       )}
 
       <RevisionSheet r={openRev} onClose={() => setOpen(null)} />
-      {flow.ui}
     </div>
   )
 }

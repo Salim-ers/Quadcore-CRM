@@ -269,6 +269,62 @@ export function Section({ title, action, children, className }: { title: string;
   )
 }
 
+/** Sous-menu dépliable : ce qui ne sert pas tous les jours reste replié */
+export function Fold({ title, icon, count, defaultOpen = false, children }: {
+  title: string; icon?: ReactNode; count?: number; defaultOpen?: boolean; children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <section className="card">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="w-full flex items-center gap-3 min-h-[56px] px-4 text-left rounded-2xl">
+        {icon && <span className="text-muted shrink-0">{icon}</span>}
+        <span className="flex-1 min-w-0 font-semibold text-[15px] truncate">{title}</span>
+        {!!count && <span className="tabular text-[12.5px] font-bold text-muted bg-sunken rounded-full min-w-[24px] h-6 px-2 flex items-center justify-center">{count}</span>}
+        <ChevronDown size={18} className={cx('text-faint shrink-0 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && <div className="px-4 pb-4 animate-fade-up">{children}</div>}
+    </section>
+  )
+}
+
+/** Choix de l'étape en un geste : une seule pastille active, toujours visible */
+export function StepSwitch<T extends string>({ options, value, onChange, label }: {
+  options: { value: T; label: string; tone: Tone }[]; value: T; onChange: (v: T) => void; label: string
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="grid gap-1 bg-sunken rounded-xl p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+      {options.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
+          className={cx('h-11 px-1 rounded-lg text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5 transition', value === o.value ? 'bg-surface shadow-card text-ink' : 'text-muted hover:text-ink')}>
+          {value === o.value && <span className={cx('w-2 h-2 rounded-full shrink-0', TONES[o.tone].dot)} />}
+          <span className="truncate">{o.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Petite fête quand un client accepte ou qu'un site est livré */
+export function celebrate() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const layer = document.createElement('div')
+  layer.setAttribute('aria-hidden', 'true')
+  layer.style.cssText = 'position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:70'
+  const colors = ['#AA543D', '#D27A60', '#E8C9A8', '#2F6B5E', '#DBD4CA']
+  for (let i = 0; i < 28; i++) {
+    const piece = document.createElement('span')
+    piece.style.cssText = `position:absolute;left:50%;top:40%;width:8px;height:12px;border-radius:2px;background:${colors[i % colors.length]}`
+    layer.append(piece)
+    const angle = Math.random() * Math.PI * 2, reach = 120 + Math.random() * 240
+    piece.animate([
+      { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+      { transform: `translate(${Math.cos(angle) * reach}px, ${Math.sin(angle) * reach + 260}px) rotate(${Math.random() * 720}deg)`, opacity: 0 },
+    ], { duration: 900 + Math.random() * 500, easing: 'cubic-bezier(.15,.7,.3,1)', fill: 'forwards' })
+  }
+  document.body.append(layer)
+  setTimeout(() => layer.remove(), 1500)
+}
+
 export function Spinner({ className }: { className?: string }) {
   return <span className={cx('inline-block w-5 h-5 rounded-full border-2 border-current border-r-transparent animate-spin', className)} />
 }
