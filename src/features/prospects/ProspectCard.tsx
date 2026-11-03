@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Check, ExternalLink, Flame, Hourglass, MapPin, MessageCircle, Phone, RotateCcw, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, ExternalLink, Flame, Hourglass, MapPin, MessageCircle, Phone, RotateCcw, X } from 'lucide-react'
 import type { Profile, Prospect } from '../../lib/types'
 import { prospectStep, siteStep, SITE_STEPS, type ProspectStep } from '../../lib/constants'
 import { Avatar, cx } from '../../components/ui'
@@ -8,6 +8,8 @@ import { DueChip, ProspectThumb } from '../../components/bits'
 import { normalizeUrl, telLink, whatsappLink } from '../../lib/links'
 import { useFileUrl } from '../../lib/useFileUrl'
 import { useStore } from '../../data/store'
+import { nextAppointment } from '../../lib/appointments'
+import { dueLabel } from '../../lib/dates'
 import { PriceButton } from '../projects/PriceButton'
 
 const SITE_TINT = 'bg-copper/12 text-copper-ink hover:bg-copper/20'
@@ -24,6 +26,7 @@ export const ProspectCard = memo(function ProspectCard({ p, owner, onStep }: {
   const step = prospectStep(p.status)
   const logo = useFileUrl(p.logo_path)
   const site = useStore((s) => s.db.projects.find((x) => x.prospect_id === p.id && !x.archived))
+  const rdv = useStore((s) => { const a = nextAppointment(s.db, p.id); return a ? `${dueLabel(a.date)}, ${a.time}` : '' })
   const tel = telLink(p.phone), wa = whatsappLink(p.phone)
   const url = normalizeUrl(site?.final_url ?? site?.demo_url ?? p.website_url)
   const deciding = step === 'vu' || step === 'attente'
@@ -46,6 +49,7 @@ export const ProspectCard = memo(function ProspectCard({ p, owner, onStep }: {
           <div className="flex items-center flex-wrap gap-x-3 text-[13px] text-muted mt-0.5 min-w-0">
             {p.city && <span className="inline-flex items-center gap-1 truncate"><MapPin size={13} className="shrink-0" />{p.city}</span>}
             {deciding && <DueChip date={p.next_follow_up} />}
+            {rdv && <span className="inline-flex items-center gap-1 font-semibold text-copper-ink whitespace-nowrap"><CalendarDays size={13} className="shrink-0" />{rdv}</span>}
             {site && <PriceButton project={site} />}
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Check, FolderKanban, RefreshCw, Store } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { CalendarDays, Check, FolderKanban, RefreshCw, Store } from 'lucide-react'
+import { appointmentOf } from '../../lib/appointments'
 import type { Task } from '../../lib/types'
 import { useStore } from '../../data/store'
 import { toggleTask } from '../../data/actions'
@@ -12,6 +13,8 @@ export const TaskRow = memo(function TaskRow({ task, onOpen, showLinks = true }:
   const prospect = useStore((s) => (task.prospect_id ? s.db.prospects.find((p) => p.id === task.prospect_id) : undefined))
   const project = useStore((s) => (task.project_id ? s.db.projects.find((p) => p.id === task.project_id) : undefined))
   const done = task.status === 'termine'
+  const nav = useNavigate()
+  const appointment = appointmentOf(task)
   // coche instantanée, même pendant l'enregistrement
   const [checked, setChecked] = useState(done)
   useEffect(() => setChecked(done), [done])
@@ -29,13 +32,14 @@ export const TaskRow = memo(function TaskRow({ task, onOpen, showLinks = true }:
           {checked && <Check size={14} strokeWidth={3} />}
         </span>
       </button>
-      <button type="button" onClick={() => onOpen(task)} className="flex-1 min-w-0 text-left py-3">
+      <button type="button" onClick={() => (appointment ? nav(`/calendrier?d=${appointment.date}&rdv=${task.id}`) : onOpen(task))} className="flex-1 min-w-0 text-left py-3">
         <p className={cx('font-semibold text-[15px] leading-snug', checked && 'line-through decoration-faint')}>
           {task.is_follow_up && <RefreshCw size={13} className="inline -mt-0.5 mr-1.5 text-copper-ink" aria-label="Relance" />}
           {task.title}
         </p>
         <div className="flex items-center gap-x-3 gap-y-1 mt-1 flex-wrap">
           <DueChip date={task.due_date} done={checked} />
+          {appointment && <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-muted"><CalendarDays size={13} />{appointment.time}</span>}
           {showLinks && prospect && <span className="inline-flex items-center gap-1 text-[12.5px] text-muted truncate max-w-[180px]"><Store size={13} />{prospect.name}</span>}
           {showLinks && project && !prospect && <span className="inline-flex items-center gap-1 text-[12.5px] text-muted truncate max-w-[180px]"><FolderKanban size={13} />{project.name}</span>}
         </div>

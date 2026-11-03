@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, format, formatDistanceToNowStrict, isToday, isYesterday, parseISO } from 'date-fns'
+import { addDays, addMonths, differenceInCalendarDays, eachDayOfInterval, endOfMonth, endOfWeek, format, formatDistanceToNowStrict, isToday, isYesterday, parseISO, startOfMonth, startOfWeek } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 /** Date locale (et non UTC) au format YYYY-MM-DD */
@@ -52,6 +52,26 @@ export const since = (iso: string) => formatDistanceToNowStrict(parseISO(iso), {
 export function greeting() {
   const h = new Date().getHours()
   return h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir'
+}
+
+// ———————————————————————— Calendrier : la semaine commence le lundi ————————————————————————
+const capitalized = (s: string) => s.replace(/^./, (c) => c.toUpperCase())
+export const shiftDays = (s: string, n: number) => ymd(addDays(asDate(s), n))
+export const shiftMonths = (s: string, n: number) => ymd(addMonths(asDate(s), n))
+export const weekDays = (s: string) => Array.from({ length: 7 }, (_, i) => ymd(addDays(startOfWeek(asDate(s), { weekStartsOn: 1 }), i)))
+export const monthDays = (s: string) => eachDayOfInterval({
+  start: startOfWeek(startOfMonth(asDate(s)), { weekStartsOn: 1 }),
+  end: endOfWeek(endOfMonth(asDate(s)), { weekStartsOn: 1 }),
+}).map(ymd)
+export const dayLabel = (s: string) => capitalized(format(asDate(s), 'EEEE d MMMM', { locale: fr }))
+export const dayShort = (s: string) => ({ name: capitalized(format(asDate(s), 'EEE', { locale: fr })).replace('.', ''), number: format(asDate(s), 'd') })
+export const monthLabel = (s: string) => capitalized(format(asDate(s), 'MMMM yyyy', { locale: fr }))
+export const sameMonth = (a: string, b: string) => a.slice(0, 7) === b.slice(0, 7)
+export function weekLabel(s: string) {
+  const days = weekDays(s), first = asDate(days[0]), last = asDate(days[6])
+  return first.getMonth() === last.getMonth()
+    ? `${format(first, 'd')} au ${format(last, 'd MMMM yyyy', { locale: fr })}`
+    : `${format(first, 'd MMM', { locale: fr })} au ${format(last, 'd MMM yyyy', { locale: fr })}`
 }
 
 export const todayLong = () => format(new Date(), 'EEEE d MMMM', { locale: fr }).replace(/^./, (c) => c.toUpperCase())

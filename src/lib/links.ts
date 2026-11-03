@@ -28,6 +28,9 @@ export const whatsappLink = (phone: string | null, text?: string) => {
 export const mailLink = (email: string | null, subject?: string) =>
   email ? `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ''}` : null
 
+export const mapsLink = (address: string | null) =>
+  address?.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.trim())}` : null
+
 export function normalizeUrl(u: string | null): string | null {
   if (!u || !u.trim()) return null
   const v = u.trim()

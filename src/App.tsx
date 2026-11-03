@@ -12,6 +12,7 @@ import { ProjectDetail } from './features/projects/ProjectDetail'
 import { TasksPage } from './features/tasks/TasksPage'
 import { TicketsPage } from './features/tickets/TicketsPage'
 import { TicketDetail } from './features/tickets/TicketDetail'
+import { CalendarPage } from './features/calendar/CalendarPage'
 import { BrochurePage } from './features/documents/BrochurePage'
 import { DocumentsPage } from './features/documents/DocumentsPage'
 import { TeamPage } from './features/team/TeamPage'
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/prospects" element={<ProspectsPage />} />
         <Route path="/prospects/:id" element={<ProspectDetail />} />
+        <Route path="/calendrier" element={<CalendarPage />} />
         <Route path="/suivi" element={<TicketsPage />} />
         <Route path="/suivi/:id" element={<TicketDetail />} />
         <Route path="/projets" element={<ProjectsPage />} />

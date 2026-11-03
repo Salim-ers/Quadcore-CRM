@@ -2,6 +2,7 @@ import { backend, deleteRow, insertRow, me, newId, toast, updateRow, useStore } 
 import type {
   Channel, EntityType, Project, ProjectStatus, Prospect, ProspectStatus, Revision, Task, Ticket, TicketStatus, UUID, WorkStatus,
 } from '../lib/types'
+import { appointmentDescription, type Appointment } from '../lib/appointments'
 import { normalizeInstagram } from '../lib/links'
 import { todayStr } from '../lib/dates'
 
@@ -128,6 +129,27 @@ export function createTask(input: Partial<Task>) {
   })
 }
 export const updateTask = (id: UUID, patch: Partial<Task>) => updateRow('tasks', id, patch)
+
+// ———————————————————————— Rendez-vous ————————————————————————
+export interface AppointmentInput { date: string; time: string; minutes: number; assignee_id: UUID; notes: string }
+
+export function createAppointment(p: Prospect, a: AppointmentInput) {
+  const site = db().projects.find((x) => x.prospect_id === p.id && !x.archived)
+  return createTask({
+    title: `RDV ${p.name}`,
+    description: appointmentDescription(a.time, a.minutes, a.notes),
+    due_date: a.date,
+    assignee_id: a.assignee_id,
+    prospect_id: p.id,
+    project_id: site?.id ?? null,
+  })
+}
+
+export const updateAppointment = (id: UUID, a: AppointmentInput) =>
+  updateTask(id, { due_date: a.date, assignee_id: a.assignee_id, description: appointmentDescription(a.time, a.minutes, a.notes) })
+
+export const moveAppointment = (a: Appointment, date: string, time: string) =>
+  updateTask(a.task.id, { due_date: date, description: appointmentDescription(time, a.minutes, a.notes) })
 export const deleteTask = (id: UUID) => deleteRow('tasks', id)
 
 export async function toggleTask(task: Task) {

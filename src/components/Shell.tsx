@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { BookOpen, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, FileText, Globe, Home, MoreHorizontal, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
+import { BookOpen, CalendarDays, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, FileText, Globe, Home, MoreHorizontal, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
 import { create } from 'zustand'
 import { useMe, useStore, backend } from '../data/store'
 import { todayStr } from '../lib/dates'
@@ -25,6 +25,7 @@ export const useUi = create<{
 const NAV = [
   { to: '/', label: 'Accueil', icon: Home, end: true },
   { to: '/prospects', label: 'Prospects', icon: Store },
+  { to: '/calendrier', label: 'Calendrier', icon: CalendarDays },
   { to: '/projets', label: 'Sites', icon: Globe },
 ]
 const MORE = [
@@ -107,8 +108,8 @@ export function Shell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [setQuickAdd, newTicket])
 
-  // Pas de bouton flottant sur une fiche, ni par-dessus la brochure
-  const hideFab = /^\/(prospects|projets|suivi)\/[^/]+/.test(loc.pathname) || loc.pathname === '/brochure'
+  // Pas de bouton flottant sur une fiche, ni par-dessus la brochure ; le calendrier a le sien
+  const hideFab = /^\/(prospects|projets|suivi)\/[^/]+/.test(loc.pathname) || loc.pathname === '/brochure' || loc.pathname === '/calendrier'
 
   return (
     <div className="min-h-[100dvh] lg:flex">
@@ -193,7 +194,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* ——— Navigation inférieure (mobile) ——— */}
       <nav className="lg:hidden fixed z-30 bottom-0 inset-x-0 bg-surface/92 backdrop-blur-xl border-t border-line pb-safe">
-        <div className="grid grid-cols-4 h-[var(--nav-h)]">
+        <div className="grid grid-cols-5 h-[var(--nav-h)]">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end}
               className={({ isActive }) => cx('relative flex flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors', isActive ? 'text-ink' : 'text-faint')}>

@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  Archive, ArchiveRestore, BellPlus, Camera, CheckSquare, ExternalLink, FileText, FolderPlus, Globe, History, Info, MapPin, MoreHorizontal, Paperclip, Pencil, Plus, Store, Trash2,
+  Archive, ArchiveRestore, BellPlus, CalendarDays, Camera, CheckSquare, ExternalLink, FileText, FolderPlus, Globe, History, Info, MapPin, MoreHorizontal, Paperclip, Pencil, Plus, Store, Trash2,
 } from 'lucide-react'
 import { Page, PageHeader } from '../../components/Shell'
 import { Avatar, Empty, Fold, Sheet, StepSwitch, confirmDialog, cx } from '../../components/ui'
@@ -116,6 +116,7 @@ export function ProspectDetail() {
 
           {projects.map((pr) => <ProjectCard key={pr.id} project={pr} hideClient />)}
           {projects.length > 0 && <button className="btn-soft w-full" onClick={() => setQuote(true)}><FileText size={17} />Devis et CGV</button>}
+          {step !== 'accepte' && step !== 'refuse' && <Link className="btn-soft w-full" to={`/calendrier?planifier=${p.id}`}><CalendarDays size={17} />Planifier un rendez-vous</Link>}
           {step === 'accepte' && projects.length === 0 && (
             <button className="btn-primary h-12" onClick={startSite}><FolderPlus size={18} />Ajouter le site</button>
           )}
