@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Archive, ArchiveRestore, CheckSquare, Copy, CreditCard, ExternalLink, FileText, GitBranch, Globe, History, MonitorSmartphone, MoreHorizontal, Paperclip, Pencil, PencilRuler, Plus, Store, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, CheckSquare, CreditCard, FileText, GitBranch, Globe, History, MonitorSmartphone, MoreHorizontal, Paperclip, Pencil, PencilRuler, Plus, Store, Trash2 } from 'lucide-react'
 import { Page, PageHeader } from '../../components/Shell'
 import { Avatar, Badge, Empty, Fold, Sheet, StepSwitch, confirmDialog, cx } from '../../components/ui'
-import { DueChip, MoneyLabel } from '../../components/bits'
-import { deleteRow, toast, useIsAdmin, useStore } from '../../data/store'
+import { DueChip, MoneyLabel, UrlTile } from '../../components/bits'
+import { deleteRow, useIsAdmin, useStore } from '../../data/store'
 import { archive, updateProject } from '../../data/actions'
 import { BILLING, SITE_STEPS, TONES, siteStep } from '../../lib/constants'
 import { fullName } from '../../lib/derive'
@@ -134,27 +134,5 @@ export function ProjectDetail() {
         </div>
       </Sheet>
     </>
-  )
-}
-
-function UrlTile({ icon, label, url, onAdd }: { icon: React.ReactNode; label: string; url: string | null; onAdd: () => void }) {
-  if (!url) {
-    return (
-      <button onClick={onAdd} className="flex items-center gap-3 min-h-[56px] px-3.5 rounded-2xl border border-dashed border-line text-faint text-[14px] font-semibold hover:text-muted">
-        {icon}<span className="flex-1 text-left">{label}</span><Plus size={16} />
-      </button>
-    )
-  }
-  return (
-    <div className="card flex items-center gap-3 min-h-[56px] pl-3.5 pr-1.5">
-      <span className="text-copper-ink">{icon}</span>
-      <a href={url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
-        <p className="text-[12px] text-muted font-semibold">{label}</p>
-        <p className="text-[14px] font-semibold truncate">{prettyUrl(url)}</p>
-      </a>
-      <button className="icon-btn w-10 h-10 text-muted" aria-label={`Copier le lien ${label}`}
-        onClick={async () => { try { await navigator.clipboard.writeText(url); toast('Lien copié') } catch { toast('Copie impossible', 'error') } }}><Copy size={16} /></button>
-      <a href={url} target="_blank" rel="noopener noreferrer" className="icon-btn w-10 h-10 text-muted" aria-label={`Ouvrir ${label}`}><ExternalLink size={16} /></a>
-    </div>
   )
 }

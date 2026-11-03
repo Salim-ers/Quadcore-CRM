@@ -62,6 +62,7 @@ export function projectDraftFrom(p: Prospect): Partial<Project> {
     prospect_id: p.id,
     owner_id: p.owner_id ?? me()?.id ?? null,
     type,
+    demo_url: p.website_url, // le site est préparé avant de voir le client : il garde son lien
     description: [p.service, p.notes].filter(Boolean).join(' — ') || null,
   }
 }

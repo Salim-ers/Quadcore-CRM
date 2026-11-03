@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, AtSign, Phone, MapPin } from 'lucide-react'
+import { ChevronDown, AtSign, Globe, Phone, MapPin } from 'lucide-react'
 import { Field, Input, Select, Sheet, TextArea, cx } from '../../components/ui'
 import { CategoryIcon, OwnerButton } from '../../components/bits'
 import { CATEGORIES, PRIORITIES, SERVICES, SOURCES } from '../../lib/constants'
 import type { Category, Priority, UUID } from '../../lib/types'
 import { createProspect } from '../../data/actions'
+import { normalizeUrl } from '../../lib/links'
 import { toast, useStore } from '../../data/store'
 
 const blank = () => ({
-  name: '', instagram: '', phone: '', city: '', category: null as Category | null,
+  name: '', website_url: '', instagram: '', phone: '', city: '', category: null as Category | null,
   contact_name: '', email: '', source: '', service: '', priority: 'normale' as Priority, notes: '',
 })
 
@@ -42,6 +43,7 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
     const ig = f.instagram.trim()
     const row = await createProspect({
       name: f.name,
+      website_url: normalizeUrl(f.website_url),
       instagram_handle: ig || null,
       phone: f.phone.trim() || null,
       city: f.city.trim() || null,
@@ -68,6 +70,11 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
           <Input ref={nameRef} aria-label="Nom du commerce" value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Nom du commerce" autoComplete="off" enterKeyHint="done" />
           {dup && <span className="block mt-1.5 text-[12.5px] font-semibold text-copper-ink">« {dup.name} » existe déjà.</span>}
         </div>
+        <label className="relative block">
+          <span className="sr-only">Lien du site</span>
+          <Globe size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
+          <Input className="pl-10" inputMode="url" value={f.website_url} onChange={(e) => set('website_url', e.target.value)} placeholder="Lien du site" autoCapitalize="none" autoCorrect="off" autoComplete="off" />
+        </label>
         <label className="relative block">
           <span className="sr-only">Téléphone</span>
           <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />

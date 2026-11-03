@@ -26,7 +26,7 @@ export function ProspectsPage() {
   const setQuickAdd = useUi((s) => s.setQuickAdd)
   const flow = useProspectFlow()
 
-  const found = useMemo(() => prospects.filter((p) => !p.archived && searchMatch(q, p.name, p.city, p.contact_name, p.instagram_handle, p.phone, p.email, p.notes)), [prospects, q])
+  const found = useMemo(() => prospects.filter((p) => !p.archived && searchMatch(q, p.name, p.city, p.contact_name, p.instagram_handle, p.phone, p.email, p.notes, p.website_url)), [prospects, q])
   const counts = useMemo(() => {
     const c: Record<ProspectStep, number> = { prospect: 0, vu: 0, accepte: 0, refuse: 0 }
     for (const p of found) c[prospectStep(p.status)]++

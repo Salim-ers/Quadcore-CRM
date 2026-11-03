@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import {
-  Coffee, Croissant, Globe, Hammer, Camera, Mail, MapPin, MessageCircle, MessagesSquare, Phone, Scissors, Shapes, ShoppingBag, UtensilsCrossed,
+  Coffee, Copy, Croissant, ExternalLink, Globe, Hammer, Camera, Mail, MapPin, MessageCircle, MessagesSquare, Phone, Plus, Scissors, Shapes, ShoppingBag, UtensilsCrossed,
 } from 'lucide-react'
 import type { Category, Channel, Profile, UUID } from '../lib/types'
-import { mailLink, normalizeUrl, telLink, whatsappLink } from '../lib/links'
-import { useProfiles } from '../data/store'
+import { mailLink, normalizeUrl, prettyUrl, telLink, whatsappLink } from '../lib/links'
+import { toast, useProfiles } from '../data/store'
 import { fullName } from '../lib/derive'
 import { Avatar, Picker, cx } from './ui'
 import { dueLabel, dueTone } from '../lib/dates'
@@ -56,6 +56,30 @@ export function ContactActions({ phone, email, instagramUrl, website }: {
           {it.icon}{it.label}
         </a>
       ))}
+    </div>
+  )
+}
+
+/** Un lien de site : l'ouvrir, le copier, ou l'ajouter s'il manque */
+export function UrlTile({ icon, label, url, onAdd }: { icon: ReactNode; label: string; url: string | null; onAdd: () => void }) {
+  const href = normalizeUrl(url)
+  if (!href) {
+    return (
+      <button onClick={onAdd} className="flex items-center gap-3 min-h-[56px] px-3.5 rounded-2xl border border-dashed border-line text-faint text-[14px] font-semibold hover:text-muted">
+        {icon}<span className="flex-1 text-left">{label}</span><Plus size={16} />
+      </button>
+    )
+  }
+  return (
+    <div className="card flex items-center gap-3 min-h-[56px] pl-3.5 pr-1.5">
+      <span className="text-copper-ink">{icon}</span>
+      <a href={href} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0">
+        <p className="text-[12px] text-muted font-semibold">{label}</p>
+        <p className="text-[14px] font-semibold truncate">{prettyUrl(href)}</p>
+      </a>
+      <button className="icon-btn w-10 h-10 text-muted" aria-label={`Copier le lien ${label}`}
+        onClick={async () => { try { await navigator.clipboard.writeText(href); toast('Lien copié') } catch { toast('Copie impossible', 'error') } }}><Copy size={16} /></button>
+      <a href={href} target="_blank" rel="noopener noreferrer" className="icon-btn w-10 h-10 text-muted" aria-label={`Ouvrir ${label}`}><ExternalLink size={16} /></a>
     </div>
   )
 }

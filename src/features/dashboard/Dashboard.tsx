@@ -1,23 +1,32 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  CalendarClock, Check, ChevronRight, History, Hourglass, MessageCircle, PencilRuler, Phone, Plus, RefreshCw, Sparkles, Ticket,
+  CalendarClock, Check, ChevronRight, Eye, History, Hourglass, MessageCircle, PencilRuler, Phone, Plus, RefreshCw, Rocket, Sparkles, Store, ThumbsDown, ThumbsUp, Ticket, type LucideIcon,
 } from 'lucide-react'
 import { Page, useUi } from '../../components/Shell'
 import { Avatar, Fold, Section, cx } from '../../components/ui'
 import { useMe, useStore } from '../../data/store'
 import { toggleTask } from '../../data/actions'
-import { TONES, type Tone } from '../../lib/constants'
+import { PROSPECT_STEPS, TONES, type ProspectStep } from '../../lib/constants'
 import { stepCounts, ticketRef, todayItems, type TodayItem } from '../../lib/derive'
 import { dueLabel, greeting, relTime, todayLong } from '../../lib/dates'
 import { telLink, whatsappLink } from '../../lib/links'
 import { describeActivity, FEED_TYPES } from '../shared/activity'
 
+const TODAY_MAX = 3
+
+// Couleurs de la barre vérifiées pour les daltonismes, en clair et en sombre : à garder avec le libellé et l'icône
+const STEP_LOOK: Record<ProspectStep, { icon: LucideIcon; bar: string }> = {
+  prospect: { icon: Store, bar: 'bg-copper' },
+  vu: { icon: Eye, bar: 'bg-sky-600' },
+  accepte: { icon: ThumbsUp, bar: 'bg-emerald-500 dark:bg-emerald-600' },
+  refuse: { icon: ThumbsDown, bar: 'bg-rose-600 dark:bg-rose-500' },
+}
+
 export function Dashboard() {
   const db = useStore((s) => s.db)
   const userId = useStore((s) => s.userId)
   const me = useMe()
-  const setQuickAdd = useUi((s) => s.setQuickAdd)
   const [feedLimit, setFeedLimit] = useState(12)
   const c = useMemo(() => stepCounts(db), [db])
   const items = useMemo(() => todayItems(db, userId), [db, userId])
@@ -25,19 +34,9 @@ export function Dashboard() {
   const byId = useMemo(() => new Map(db.profiles.map((p) => [p.id, p])), [db.profiles])
   const empty = c.prospect + c.vu + c.accepte + c.refuse + c.en_cours + c.livre === 0
 
-  // Le parcours, dans l'ordre
-  const tiles: { label: string; value: number; to: string; tone: Tone }[] = [
-    { label: 'Prospects', value: c.prospect, to: '/prospects', tone: 'stone' },
-    { label: 'Clients vus', value: c.vu, to: '/prospects?f=vu', tone: 'sky' },
-    { label: 'Acceptés', value: c.accepte, to: '/prospects?f=accepte', tone: 'green' },
-    { label: 'Refusés', value: c.refuse, to: '/prospects?f=refuse', tone: 'rose' },
-    { label: 'Sites en cours', value: c.en_cours, to: '/projets', tone: 'amber' },
-    { label: 'Sites livrés', value: c.livre, to: '/projets?g=livres', tone: 'green' },
-  ]
-
   return (
     <Page className="pt-[max(var(--safe-top),16px)] lg:pt-8">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-5">
         <div className="flex-1 min-w-0">
           <p className="text-[13.5px] text-muted font-medium">{todayLong()}</p>
           <h1 className="h-display text-[28px] lg:text-[32px] leading-tight">{greeting()}, {me?.first_name}</h1>
@@ -45,32 +44,17 @@ export function Dashboard() {
         <Link to="/equipe" className="lg:hidden" aria-label="Mon profil"><Avatar profile={me} size={40} /></Link>
       </div>
 
-      {empty && (
-        <div className="card p-6 mb-3 text-center animate-fade-up">
-          <Sparkles size={24} className="mx-auto text-copper-ink" />
-          <p className="h-display text-[22px] mt-2">On commence ?</p>
-          <p className="text-[14px] text-muted mt-1 mb-4">Ajoutez votre premier prospect : seul le nom suffit.</p>
-          <button className="btn-primary" onClick={() => setQuickAdd(true)}><Plus size={18} />Nouveau prospect</button>
-        </div>
-      )}
-
-      <nav aria-label="Parcours" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        {tiles.map((t) => (
-          <Link key={t.label} to={t.to} className="card p-4 hover:border-copper/40 transition active:scale-[.98]">
-            <p className="h-display text-[38px] leading-none tabular">{t.value}</p>
-            <p className="text-[13.5px] font-semibold text-muted mt-2.5 flex items-center gap-1.5">
-              <span className={cx('w-2 h-2 rounded-full shrink-0', TONES[t.tone].dot)} />{t.label}
-            </p>
-          </Link>
-        ))}
-      </nav>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+        <SitesHero livre={c.livre} enCours={c.en_cours} empty={empty} className="lg:col-span-2" />
+        <Prospection counts={c} className="lg:col-span-3" />
+      </div>
 
       {items.length > 0 && (
         <Section title={`À faire aujourd’hui (${items.length})`}>
-          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-            {items.slice(0, 6).map((i) => <TodayRow key={i.id} item={i} />)}
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
+            {items.slice(0, TODAY_MAX).map((i) => <TodayRow key={i.id} item={i} />)}
           </div>
-          {items.length > 6 && <Link to="/taches" className="btn-ghost w-full mt-2 text-muted">Voir les {items.length - 6} autres <ChevronRight size={16} /></Link>}
+          {items.length > TODAY_MAX && <Link to="/taches" className="btn-ghost w-full mt-2 text-muted">Voir les {items.length - TODAY_MAX} autres <ChevronRight size={16} /></Link>}
         </Section>
       )}
 
@@ -98,6 +82,69 @@ export function Dashboard() {
         </div>
       )}
     </Page>
+  )
+}
+
+/** La grande carte : les sites livrés, et ceux en cours juste dessous. Sans aucune fiche, elle invite à commencer. */
+function SitesHero({ livre, enCours, empty, className }: { livre: number; enCours: number; empty: boolean; className?: string }) {
+  const setQuickAdd = useUi((s) => s.setQuickAdd)
+  if (empty) {
+    return (
+      <div className={cx('hero-card', className)}>
+        <Sparkles size={24} />
+        <p className="h-display text-[26px] leading-tight mt-2">On commence ?</p>
+        <p className="text-[14.5px] mt-1 mb-4">Ajoutez votre premier prospect : seul le nom suffit.</p>
+        <button className="btn bg-white text-[#7A3624] hover:bg-white/90" onClick={() => setQuickAdd(true)}><Plus size={18} />Nouveau prospect</button>
+      </div>
+    )
+  }
+  return (
+    <div className={cx('hero-card flex flex-col', className)}>
+      <Link to="/projets?g=livres" className="absolute inset-0" aria-label={`Voir les sites livrés (${livre})`} />
+      <Rocket aria-hidden size={124} strokeWidth={1.2} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-15 pointer-events-none" />
+      <p className="text-[14.5px] font-semibold">Sites livrés</p>
+      <p className="h-display text-[68px] leading-none mt-2 mb-5">{livre}</p>
+      <Link to="/projets" className="relative z-10 mt-auto self-start inline-flex items-center gap-2 h-10 pl-3.5 pr-2.5 rounded-full bg-black/20 hover:bg-black/30 transition text-[14px] font-semibold">
+        <span className={cx('w-2 h-2 rounded-full bg-amber-300', enCours > 0 && 'animate-pulse')} />
+        {enCours} site{enCours > 1 ? 's' : ''} en cours<ChevronRight size={16} />
+      </Link>
+    </div>
+  )
+}
+
+/** Où en sont les fiches : la barre montre la répartition d'un coup d'œil, les cases donnent les chiffres et ouvrent la liste. */
+function Prospection({ counts, className }: { counts: ReturnType<typeof stepCounts>; className?: string }) {
+  const total = PROSPECT_STEPS.reduce((n, s) => n + counts[s.value], 0)
+  return (
+    <section className={cx('card p-4 flex flex-col', className)}>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-bold text-[16px]">Prospection</h2>
+        <Link to="/prospects" className="inline-flex items-center gap-0.5 min-h-[32px] text-[13.5px] font-semibold text-muted hover:text-ink">
+          {total} fiche{total > 1 ? 's' : ''}<ChevronRight size={15} />
+        </Link>
+      </div>
+      <div role="img" aria-label={PROSPECT_STEPS.map((s) => `${counts[s.value]} ${s.plural.toLowerCase()}`).join(', ')}
+        className={cx('flex gap-0.5 h-2', total === 0 && 'bg-sunken rounded-full')}>
+        {PROSPECT_STEPS.filter((s) => counts[s.value] > 0).map((s) => (
+          <span key={s.value} className={cx('min-w-[8px] rounded-full transition-[flex-grow] duration-500', STEP_LOOK[s.value].bar)} style={{ flexGrow: counts[s.value], flexBasis: 0 }} />
+        ))}
+      </div>
+      <nav aria-label="Parcours" className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3.5">
+        {PROSPECT_STEPS.map((s) => {
+          const Icon = STEP_LOOK[s.value].icon
+          return (
+            <Link key={s.value} to={s.value === 'prospect' ? '/prospects' : `/prospects?f=${s.value}`}
+              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-sunken/60 hover:bg-sunken transition active:scale-[.98]">
+              <span className={cx('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', TONES[s.tone].badge)}><Icon size={18} /></span>
+              <span className="min-w-0">
+                <span className="block h-display text-[24px] leading-none">{counts[s.value]}</span>
+                <span className="block text-[12.5px] font-semibold text-muted mt-1">{s.plural}</span>
+              </span>
+            </Link>
+          )
+        })}
+      </nav>
+    </section>
   )
 }
 

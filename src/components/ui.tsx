@@ -295,8 +295,8 @@ export function StepSwitch<T extends string>({ options, value, onChange, label }
     <div role="radiogroup" aria-label={label} className="grid gap-1 bg-sunken rounded-xl p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
       {options.map((o) => (
         <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
-          className={cx('h-11 px-1 rounded-lg text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5 transition', value === o.value ? 'bg-surface shadow-card text-ink' : 'text-muted hover:text-ink')}>
-          {value === o.value && <span className={cx('w-2 h-2 rounded-full shrink-0', TONES[o.tone].dot)} />}
+          className={cx('h-11 px-0.5 rounded-lg text-[13px] font-semibold inline-flex items-center justify-center gap-1 transition', value === o.value ? 'bg-surface shadow-card text-ink' : 'text-muted hover:text-ink')}>
+          {value === o.value && <span className={cx('w-1.5 h-1.5 rounded-full shrink-0', TONES[o.tone].dot)} />}
           <span className="truncate">{o.label}</span>
         </button>
       ))}

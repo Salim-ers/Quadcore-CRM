@@ -24,7 +24,7 @@ interface StatusDef<S> { value: S; label: string; short?: string; tone: Tone }
 
 // Statuts stockés en base : gardés pour l'historique, mais l'app n'affiche que le parcours simple ci-dessous
 export const PROSPECT_STATUSES: StatusDef<ProspectStatus>[] = [
-  { value: 'a_prospecter', label: 'Prospect', tone: 'stone' },
+  { value: 'a_prospecter', label: 'Prospect', tone: 'copper' },
   { value: 'contacte', label: 'Client vu', tone: 'sky' },
   { value: 'en_attente', label: 'Client vu', tone: 'sky' },
   { value: 'a_relancer', label: 'À relancer', tone: 'orange' },
@@ -56,7 +56,7 @@ export const PROJECT_DONE: ProjectStatus[] = ['livre', 'maintenance', 'demo_refu
 // ———————————————————————— Le parcours : Prospect → Client vu → Accepté ou Refusé → Site en cours → Site livré ————————
 export type ProspectStep = 'prospect' | 'vu' | 'accepte' | 'refuse'
 export const PROSPECT_STEPS: { value: ProspectStep; label: string; plural: string; tone: Tone; status: ProspectStatus }[] = [
-  { value: 'prospect', label: 'Prospect', plural: 'Prospects', tone: 'stone', status: 'a_prospecter' },
+  { value: 'prospect', label: 'Prospect', plural: 'Prospects', tone: 'copper', status: 'a_prospecter' },
   { value: 'vu', label: 'Client vu', plural: 'Clients vus', tone: 'sky', status: 'contacte' },
   { value: 'accepte', label: 'Accepté', plural: 'Acceptés', tone: 'green', status: 'gagne' },
   { value: 'refuse', label: 'Refusé', plural: 'Refusés', tone: 'rose', status: 'perdu' },

@@ -27,7 +27,7 @@ export function useProspectFlow() {
     celebrate()
     const existing = useStore.getState().db.projects.find((x) => x.prospect_id === p.id && !x.archived)
     const site = existing ?? await createProject(projectDraftFrom(p))
-    toast(existing ? `${p.name} a accepté` : `${p.name} a accepté : site lancé`, 'success', site ? { label: 'Voir le site', run: () => nav(`/projets/${site.id}`) } : undefined)
+    toast(existing ? `${p.name} a accepté` : `${p.name} a accepté : site en cours`, 'success', site ? { label: 'Voir le site', run: () => nav(`/projets/${site.id}`) } : undefined)
   }
 
   const ui: ReactNode = (

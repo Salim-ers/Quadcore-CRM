@@ -5,6 +5,7 @@ import { OwnerButton } from '../../components/bits'
 import { CATEGORIES, PRIORITIES, SERVICES, SOURCES } from '../../lib/constants'
 import type { Prospect } from '../../lib/types'
 import { updateProspect } from '../../data/actions'
+import { useStore } from '../../data/store'
 
 const FIELDS = [
   'name', 'category', 'contact_name', 'phone', 'email', 'address', 'city', 'instagram_handle', 'facebook_url', 'tiktok_url',
@@ -16,6 +17,8 @@ type Draft = Pick<Prospect, (typeof FIELDS)[number]>
 export function ProspectForm({ prospect, open, onClose }: { prospect: Prospect; open: boolean; onClose: () => void }) {
   const [d, setD] = useState<Draft>(() => pick(prospect))
   const [more, setMore] = useState(false)
+  // une fois le site créé, c'est lui qui porte le lien
+  const hasSite = useStore((s) => s.db.projects.some((x) => x.prospect_id === prospect.id && !x.archived))
   useEffect(() => { if (open) { setD(pick(prospect)); setMore(false) } }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((s) => ({ ...s, [k]: v }))
   const txt = (k: keyof Draft) => ({
@@ -40,6 +43,7 @@ export function ProspectForm({ prospect, open, onClose }: { prospect: Prospect; 
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Nom du commerce *" className="sm:col-span-2"><Input {...txt('name')} /></Field>
+          {!hasSite && <Field label="Lien du site" className="sm:col-span-2"><Input inputMode="url" autoCapitalize="none" autoCorrect="off" {...txt('website_url')} placeholder="https://…vercel.app" /></Field>}
           <Field label="Nom du contact"><Input {...txt('contact_name')} autoComplete="off" /></Field>
           <Field label="Téléphone"><Input type="tel" inputMode="tel" {...txt('phone')} /></Field>
           <Field label="E-mail"><Input type="email" inputMode="email" autoCapitalize="none" {...txt('email')} /></Field>
@@ -66,7 +70,6 @@ export function ProspectForm({ prospect, open, onClose }: { prospect: Prospect; 
             <Field label="Adresse" className="sm:col-span-2"><Input {...txt('address')} autoComplete="street-address" /></Field>
             <Field label="Responsable"><OwnerButton value={d.owner_id} onChange={(v) => set('owner_id', v)} /></Field>
             <Field label="Prochaine relance"><Input type="date" {...txt('next_follow_up')} /></Field>
-            <Field label="Site existant"><Input type="url" inputMode="url" autoCapitalize="none" {...txt('website_url')} placeholder="https://" /></Field>
             <Field label="Facebook"><Input type="url" inputMode="url" autoCapitalize="none" {...txt('facebook_url')} placeholder="https://facebook.com/…" /></Field>
             <Field label="TikTok"><Input type="url" inputMode="url" autoCapitalize="none" {...txt('tiktok_url')} placeholder="https://tiktok.com/@…" /></Field>
             <Field label="LinkedIn"><Input type="url" inputMode="url" autoCapitalize="none" {...txt('linkedin_url')} placeholder="https://linkedin.com/…" /></Field>

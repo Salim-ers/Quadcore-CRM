@@ -63,12 +63,12 @@ export function buildSeed(): DB {
   })
   const barber = P({
     name: 'Barber Club 60', category: 'barber', contact_name: 'Yanis Haddou', phone: '06 98 76 54 32', city: 'Clermont',
-    instagram_handle: 'barberclub60', tiktok_url: 'https://www.tiktok.com/@barberclub60', source: 'TikTok', service: 'Site vitrine premium', owner_id: 'u-salim',
+    instagram_handle: 'barberclub60', tiktok_url: 'https://www.tiktok.com/@barberclub60', website_url: 'https://barber-club-60.vercel.app', source: 'TikTok', service: 'Site vitrine premium', owner_id: 'u-salim',
   })
   at(9, 15, 20); as('u-sadish')
   const comptoir = P({
     name: 'Le Petit Comptoir', category: 'restaurant', contact_name: 'Hugo Bernard', phone: '06 31 20 87 66', city: 'Chantilly',
-    instagram_handle: 'lepetitcomptoir.chantilly', source: 'Google Maps', service: 'Site vitrine + SEO', owner_id: 'u-sadish',
+    instagram_handle: 'lepetitcomptoir.chantilly', website_url: 'https://le-petit-comptoir.vercel.app', source: 'Google Maps', service: 'Site vitrine + SEO', owner_id: 'u-sadish',
   })
   const fleurs = P({
     name: 'Fleurs de Saison', category: 'commerce', contact_name: 'Anaïs Petit', phone: '06 20 30 40 50', city: 'Beauvais',

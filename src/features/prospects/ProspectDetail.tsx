@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  Archive, ArchiveRestore, BellPlus, Camera, CheckSquare, ExternalLink, FolderPlus, History, Info, MapPin, MoreHorizontal, Paperclip, Pencil, Plus, Store, Trash2,
+  Archive, ArchiveRestore, BellPlus, Camera, CheckSquare, ExternalLink, FolderPlus, Globe, History, Info, MapPin, MoreHorizontal, Paperclip, Pencil, Plus, Store, Trash2,
 } from 'lucide-react'
 import { Page, PageHeader } from '../../components/Shell'
 import { Avatar, Empty, Fold, Sheet, StepSwitch, confirmDialog, cx } from '../../components/ui'
-import { ContactActions, DueChip, ProspectThumb } from '../../components/bits'
+import { ContactActions, DueChip, ProspectThumb, UrlTile } from '../../components/bits'
 import { useIsAdmin, useStore, deleteRow } from '../../data/store'
 import { archive, createProject, projectDraftFrom, uploadLogo } from '../../data/actions'
 import { CATEGORIES, PRIORITIES, PROSPECT_STEPS, labelOf, prospectStep } from '../../lib/constants'
@@ -59,7 +59,7 @@ export function ProspectDetail() {
     ['E-mail', p.email],
     ['Adresse', [p.address, p.city].filter(Boolean).join(', ')],
     ['Instagram', p.instagram_handle && (p.instagram_url ? <a className="text-copper-ink font-semibold" href={p.instagram_url} target="_blank" rel="noopener noreferrer">@{p.instagram_handle}</a> : '@' + p.instagram_handle)],
-    ['Site existant', p.website_url && <a className="text-copper-ink font-semibold inline-flex items-center gap-1" href={normalizeUrl(p.website_url)!} target="_blank" rel="noopener noreferrer">{prettyUrl(p.website_url)}<ExternalLink size={13} /></a>],
+    ['Lien du site', p.website_url &&<a className="text-copper-ink font-semibold inline-flex items-center gap-1" href={normalizeUrl(p.website_url)!} target="_blank" rel="noopener noreferrer">{prettyUrl(p.website_url)}<ExternalLink size={13} /></a>],
     ['Facebook', p.facebook_url && <a className="text-copper-ink font-semibold" href={normalizeUrl(p.facebook_url)!} target="_blank" rel="noopener noreferrer">{prettyUrl(p.facebook_url)}</a>],
     ['TikTok', p.tiktok_url && <a className="text-copper-ink font-semibold" href={normalizeUrl(p.tiktok_url)!} target="_blank" rel="noopener noreferrer">{prettyUrl(p.tiktok_url)}</a>],
     ['LinkedIn', p.linkedin_url && <a className="text-copper-ink font-semibold" href={normalizeUrl(p.linkedin_url)!} target="_blank" rel="noopener noreferrer">{prettyUrl(p.linkedin_url)}</a>],
@@ -108,7 +108,9 @@ export function ProspectDetail() {
             )}
           </div>
 
-          <ContactActions phone={p.phone} email={p.email} instagramUrl={p.instagram_url} website={p.website_url} />
+          {projects.length === 0 && <UrlTile icon={<Globe size={18} />} label="Lien du site" url={p.website_url} onAdd={() => setEdit(true)} />}
+
+          <ContactActions phone={p.phone} email={p.email} instagramUrl={p.instagram_url} website={null} />
 
           {projects.map((pr) => <ProjectCard key={pr.id} project={pr} hideClient />)}
           {step === 'accepte' && projects.length === 0 && (
