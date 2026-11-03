@@ -176,7 +176,8 @@ function ToSchedule({ list, placing, onPick }: { list: Prospect[]; placing: Pros
         <ul className="flex flex-col gap-1.5">
           {found.map((p) => {
             const step = PROSPECT_STEPS.find((s) => s.value === prospectStep(p.status))!
-            const price = projects.find((x) => x.prospect_id === p.id && !x.archived)?.price_proposed
+            const site = projects.find((x) => x.prospect_id === p.id && !x.archived)
+            const price = site?.price_proposed
             return (
               <li key={p.id}>
                 <button type="button" draggable data-prospect={p.name} onDragStart={(e) => startDrag(e, `prospect:${p.id}`)} onClick={() => onPick(p)}
@@ -191,6 +192,7 @@ function ToSchedule({ list, placing, onPick }: { list: Prospect[]; placing: Pros
                     </span>
                   </span>
                   {price != null && <span className="text-[12.5px] font-bold whitespace-nowrap">{euros(price)}</span>}
+                  {!site && !p.website_url && <span className="text-[12px] font-semibold text-muted whitespace-nowrap">Sans site</span>}
                 </button>
               </li>
             )

@@ -15,6 +15,14 @@ export function stepCounts(db: DB) {
   return c
 }
 
+/** Les fiches qui ont déjà un site : un site rattaché, ou au moins son lien. */
+export function prospectsWithSite(db: Pick<DB, 'projects' | 'prospects'>) {
+  const ids = new Set<UUID>()
+  for (const s of db.projects) if (!s.archived && s.prospect_id) ids.add(s.prospect_id)
+  for (const p of db.prospects) if (p.website_url) ids.add(p.id)
+  return ids
+}
+
 /** Réel : les clients acceptés, au prix accepté s'il existe. Prévisionnel : les autres prix proposés. Un refus ne compte plus. */
 export function moneySplit(db: DB) {
   const clients = new Map(db.prospects.map((p) => [p.id, p]))

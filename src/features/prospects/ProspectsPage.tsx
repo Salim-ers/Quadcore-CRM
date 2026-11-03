@@ -2,12 +2,12 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Search, Store, X } from 'lucide-react'
 import { Page, PageHeader, useUi } from '../../components/Shell'
-import { Chips, Empty, Input } from '../../components/ui'
+import { Chips, Empty, Input, Section } from '../../components/ui'
 import { ProspectCard } from './ProspectCard'
 import { useProspectFlow } from './flows'
 import { useStore } from '../../data/store'
 import { PROSPECT_STEPS, prospectStep, type ProspectStep } from '../../lib/constants'
-import { searchMatch } from '../../lib/derive'
+import { prospectsWithSite, searchMatch } from '../../lib/derive'
 
 const EMPTY: Record<ProspectStep, { title: string; text: string }> = {
   prospect: { title: 'Aucun prospect à voir', text: 'Ajoutez un commerce repéré sur Instagram ou Google : seul le nom suffit.' },
@@ -24,6 +24,7 @@ export function ProspectsPage() {
   const [q, setQ] = useState('')
   const prospects = useStore((s) => s.db.prospects)
   const profiles = useStore((s) => s.db.profiles)
+  const projects = useStore((s) => s.db.projects)
   const setQuickAdd = useUi((s) => s.setQuickAdd)
   const flow = useProspectFlow()
 
@@ -35,6 +36,14 @@ export function ProspectsPage() {
   }, [found])
   const list = useMemo(() => found.filter((p) => prospectStep(p.status) === step).sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1)), [found, step])
   const byId = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles])
+  // Ceux dont le site est prêt d'abord : ce sont les premiers à aller voir
+  const groups = useMemo(() => {
+    const withSite = prospectsWithSite({ projects, prospects })
+    return [
+      { title: 'Avec site', list: list.filter((p) => withSite.has(p.id)) },
+      { title: 'Sans site', list: list.filter((p) => !withSite.has(p.id)) },
+    ].filter((g) => g.list.length > 0)
+  }, [list, projects, prospects])
 
   return (
     <>
@@ -53,11 +62,13 @@ export function ProspectsPage() {
         {list.length === 0 ? (
           <Empty icon={<Store size={26} />} title={q ? 'Aucun résultat' : EMPTY[step].title} text={q ? 'Essayez un autre mot.' : EMPTY[step].text}
             action={!q && step === 'prospect' && <button className="btn-primary" onClick={() => setQuickAdd(true)}><Plus size={18} />Nouveau prospect</button>} />
-        ) : (
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-            {list.map((p) => <ProspectCard key={p.id} p={p} owner={p.owner_id ? byId.get(p.owner_id) : undefined} onStep={flow.moveTo} />)}
-          </div>
-        )}
+        ) : groups.map((g) => (
+          <Section key={g.title} title={`${g.title} (${g.list.length})`} className="first:mt-1">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+              {g.list.map((p) => <ProspectCard key={p.id} p={p} owner={p.owner_id ? byId.get(p.owner_id) : undefined} onStep={flow.moveTo} />)}
+            </div>
+          </Section>
+        ))}
       </Page>
       {flow.ui}
     </>

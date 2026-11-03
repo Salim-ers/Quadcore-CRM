@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, CalendarDays, Check, ExternalLink, Flame, Hourglass, MapPin, MessageCircle, Phone, RotateCcw, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, ExternalLink, Flame, Globe, Hourglass, MapPin, MessageCircle, Phone, RotateCcw, X } from 'lucide-react'
 import type { Profile, Prospect } from '../../lib/types'
 import { prospectStep, siteStep, SITE_STEPS, type ProspectStep } from '../../lib/constants'
 import { Avatar, cx } from '../../components/ui'
@@ -51,6 +51,7 @@ export const ProspectCard = memo(function ProspectCard({ p, owner, onStep }: {
             {deciding && <DueChip date={p.next_follow_up} />}
             {rdv && <span className="inline-flex items-center gap-1 font-semibold text-copper-ink whitespace-nowrap"><CalendarDays size={13} className="shrink-0" />{rdv}</span>}
             {site && <PriceButton project={site} />}
+            {!site && !p.website_url && <span className="inline-flex items-center gap-1 font-semibold whitespace-nowrap"><Globe size={13} className="shrink-0" />Sans site</span>}
           </div>
         </div>
         {tel && <a href={tel} className="relative z-10 icon-btn w-10 h-10 bg-sunken" aria-label={`Appeler ${p.name}`}><Phone size={17} /></a>}
