@@ -6,7 +6,7 @@ import { euros } from '../../components/bits'
 import { useStore } from '../../data/store'
 import { liveProjects, searchMatch } from '../../lib/derive'
 import type { Project } from '../../lib/types'
-import { OFFERS, PLANS, installments } from '../../lib/offers'
+import { OFFERS, PLANS, TABLET_LABEL, installments } from '../../lib/offers'
 import { CGV_VERSION } from './cgv'
 import { canShareFile, downloadFile, shareFile } from './deliver'
 import { QuoteSheet } from './QuoteSheet'
@@ -86,6 +86,7 @@ export function DocumentsPage() {
               {PLANS.filter((p) => p.price > 0).map((p) => (
                 <li key={p.id} className="flex items-baseline justify-between gap-3 px-1 py-2.5"><span>{p.label}</span><span className="font-semibold whitespace-nowrap">{euros(p.price)}/mois</span></li>
               ))}
+              <li className="flex items-baseline justify-between gap-3 px-1 py-2.5"><span>{TABLET_LABEL}</span><span className="font-semibold whitespace-nowrap">À chaque devis</span></li>
             </ul>
             <p className="text-[12.5px] text-muted mt-2 flex items-center gap-1.5"><FileText size={14} className="shrink-0" />Prix TTC de votre plaquette, modifiables avec le crayon sur chaque site ou devis.</p>
           </Fold>

@@ -166,7 +166,7 @@ function quotePage(w: Writer, q: QuoteDraft, logo: string) {
     w.y += 4.6
   }
   row(q.offer.label, q.price, q.offer.includes.map((i) => `- ${i}`))
-  q.extras.forEach((e) => row(e.label, e.price, []))
+  q.extras.forEach((e) => row(e.label, e.price, (e.details ?? []).map((d) => `- ${d}`)))
 
   // Les totaux
   w.y += 0.6

@@ -30,7 +30,15 @@ export const PAYMENTS: { id: PaymentId; label: string }[] = [
   { id: 'comptant', label: 'En une fois' },
 ]
 
-export interface QuoteLine { label: string; price: number }
+export interface QuoteLine { label: string; price: number; details?: string[] }
+
+// En option, surtout pour les restaurants : pas de tarif fixe, le prix se met à chaque devis
+export const TABLET_LABEL = 'Tablette commandes et cuisine (PWA)'
+export const tabletLine = (price: number, supplied: boolean): QuoteLine => ({
+  label: TABLET_LABEL,
+  price,
+  details: ['Prise de commandes et suivi en cuisine sur tablette', 'Application web (PWA), connexion internet nécessaire', supplied ? 'Tablette fournie par QUADCORE' : 'Installée sur votre tablette'],
+})
 export interface QuoteDraft {
   number: string
   date: Date

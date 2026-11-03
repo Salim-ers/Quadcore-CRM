@@ -24,7 +24,7 @@ export const cgvSections = (): { title: string; paragraphs: string[] }[] => [
   {
     title: 'Nos prestations',
     paragraphs: [
-      'Création de sites vitrines, référencement, espaces de gestion sur mesure, solutions complètes sur mesure, cartes de visite et de fidélité digitales, maintenance, hébergement et gestion du nom de domaine. Le devis décrit ce qui est compris. Ce qui n’y figure pas fait l’objet d’un devis complémentaire.',
+      'Création de sites vitrines, référencement, espaces de gestion sur mesure, solutions complètes sur mesure, cartes de visite et de fidélité digitales, tablette de commandes et de cuisine, maintenance, hébergement et gestion du nom de domaine. Le devis décrit ce qui est compris. Ce qui n’y figure pas fait l’objet d’un devis complémentaire.',
     ],
   },
   {
@@ -79,9 +79,16 @@ export const cgvSections = (): { title: string; paragraphs: string[] }[] => [
     ],
   },
   {
+    title: 'Option tablette',
+    paragraphs: [
+      'En option, nous proposons une application web (PWA) pour gérer les commandes et la cuisine sur tablette. Si vous la choisissez, elle figure au devis avec son prix, compris dans le total. Elle a besoin d’une connexion internet pour fonctionner.',
+      'Si le devis prévoit une tablette fournie par QUADCORE, elle vous appartient une fois entièrement payée et reste couverte par la garantie de son fabricant. Si l’application est installée sur votre tablette, celle-ci doit être compatible et reste sous votre responsabilité.',
+    ],
+  },
+  {
     title: 'Propriété du site',
     paragraphs: [
-      'Vos contenus (textes, photos, logo) restent à vous, et vous garantissez avoir le droit de les utiliser. Une fois le devis entièrement payé, QUADCORE vous cède les droits de reproduction, de représentation et d’adaptation sur le site réalisé pour vous, pour l’exploitation de votre activité, dans le monde entier et pour toute la durée légale de protection. Avant ce paiement complet, le site reste notre propriété.',
+      'Vos contenus (textes, photos, logo) restent à vous, et vous garantissez avoir le droit de les utiliser. Une fois le devis entièrement payé, QUADCORE vous cède les droits de reproduction, de représentation et d’adaptation sur le site et les applications réalisés pour vous, pour l’exploitation de votre activité, dans le monde entier et pour toute la durée légale de protection. Avant ce paiement complet, le site reste notre propriété.',
       'Les composants de tiers (logiciels libres, polices, modules, images sous licence) restent soumis à leur propre licence, et nos outils et méthodes génériques restent à nous. Sauf refus de votre part par e-mail, nous pouvons citer et montrer votre site comme référence.',
     ],
   },

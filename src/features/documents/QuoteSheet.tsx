@@ -1,11 +1,11 @@
 import { useLayoutEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Download, Plus, Send, Trash2 } from 'lucide-react'
+import { CheckCircle2, Download, Plus, Send, Tablet, Trash2 } from 'lucide-react'
 import { Field, Input, Sheet, cx } from '../../components/ui'
 import { euros } from '../../components/bits'
 import { toast, useStore } from '../../data/store'
 import { updateProject, updateProspect, uploadAttachment } from '../../data/actions'
 import { parsePrice } from '../../lib/derive'
-import { OFFERS, PAYMENTS, PLANS, TERMS, offerById, offerFor, paymentText, planOf, quoteNumber, quoteTotals, type PaymentId, type PlanId } from '../../lib/offers'
+import { OFFERS, PAYMENTS, PLANS, TABLET_LABEL, TERMS, offerById, offerFor, paymentText, planOf, quoteNumber, quoteTotals, tabletLine, type PaymentId, type PlanId, type QuoteLine } from '../../lib/offers'
 import type { Project, Prospect } from '../../lib/types'
 import { canShareFile, downloadFile, shareFile } from './deliver'
 import { OfferPrice, type Deal } from './OfferPrice'
@@ -21,6 +21,9 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
   const [email, setEmail] = useState('')
   const [deal, setDeal] = useState<Deal>({ offerId: OFFERS[0].id, price: String(OFFERS[0].price) })
   const [extras, setExtras] = useState<{ label: string; price: string }[]>([])
+  const [tablet, setTablet] = useState(false)
+  const [tabletSupplied, setTabletSupplied] = useState(false)
+  const [tabletText, setTabletText] = useState('')
   const [plan, setPlan] = useState<PlanId>('essentielle')
   const [managed, setManaged] = useState(true)
   const [domain, setDomain] = useState('')
@@ -37,6 +40,7 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
     setName(client?.name ?? ''); setContact(client?.contact_name ?? ''); setEmail(client?.email ?? '')
     setAddress([client?.address, client?.city].filter(Boolean).join(', '))
     setDeal({ offerId: offer.id, price: String(project.price_proposed ?? offer.price) }); setExtras([])
+    setTablet(false); setTabletSupplied(false); setTabletText('')
     setPlan(offer.id === 'complete' || offer.id === 'gestion' ? 'premium' : 'essentielle')
     setManaged(true); setDomain(''); setYearlyText(String(TERMS.hostingYearly)); setPayment('acompte'); setDelay(TERMS.delay)
     setBusy(false); setFile(null)
@@ -48,11 +52,18 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
   const parsedExtras = extras.map((e) => ({ label: e.label.trim(), price: parsePrice(e.price) }))
   const extrasOk = parsedExtras.every((e) => e.label && e.price !== null && !Number.isNaN(e.price))
   const hostingOk = !managed || (yearly !== null && !Number.isNaN(yearly))
-  const ready = !!name.trim() && price !== null && !Number.isNaN(price) && extrasOk && hostingOk && !!delay.trim()
+  const tabletPrice = parsePrice(tabletText)
+  const tabletOk = !tablet || (tabletPrice !== null && !Number.isNaN(tabletPrice))
+  const ready = !!name.trim() && price !== null && !Number.isNaN(price) && extrasOk && tabletOk && hostingOk && !!delay.trim()
+  // L'option tablette est une ligne du devis comme une autre : elle compte dans le total et le paiement
+  const lines = useMemo<QuoteLine[]>(() => [
+    ...(tablet && tabletOk ? [tabletLine(tabletPrice as number, tabletSupplied)] : []),
+    ...parsedExtras.filter((e) => e.price !== null && !Number.isNaN(e.price)) as QuoteLine[],
+  ], [tablet, tabletOk, tabletPrice, tabletSupplied, extras]) // eslint-disable-line react-hooks/exhaustive-deps
   const totals = useMemo(() => quoteTotals({
     price: price !== null && !Number.isNaN(price) ? price : 0,
-    extras: parsedExtras.filter((e) => e.price !== null && !Number.isNaN(e.price)) as { label: string; price: number }[],
-  }), [price, extras]) // eslint-disable-line react-hooks/exhaustive-deps
+    extras: lines,
+  }), [price, lines])
 
   /** Complète la fiche avec ce qui manquait, sans jamais écraser ce qu'elle contient. */
   function fillClient(c: Prospect) {
@@ -76,7 +87,7 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
         client: { name: name.trim(), contact: contact.trim(), address: address.trim(), email: email.trim() },
         offer,
         price,
-        extras: parsedExtras as { label: string; price: number }[],
+        extras: lines,
         plan,
         hosting: { managed, domain: domain.trim(), yearly },
         payment,
@@ -147,6 +158,31 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
             </div>
           ))}
           <button type="button" className="btn-soft self-start h-10 min-h-0 text-[14px]" onClick={() => setExtras((all) => [...all, { label: '', price: '' }])}><Plus size={16} />Ajouter une ligne</button>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <h3 className="section-title">Option tablette</h3>
+          <button type="button" role="switch" aria-checked={tablet} aria-label={TABLET_LABEL} onClick={() => setTablet((v) => !v)}
+            className={cx('flex items-center gap-3 text-left p-3 rounded-xl border transition', tablet ? 'border-copper bg-copper/8' : 'border-line bg-surface')}>
+            <Tablet size={20} className={cx('shrink-0', tablet ? 'text-copper-ink' : 'text-muted')} />
+            <span className="flex-1 min-w-0">
+              <span className="block font-semibold text-[14.5px]">{TABLET_LABEL}</span>
+              <span className="block text-[12.5px] text-muted mt-0.5">Par exemple pour un restaurant</span>
+            </span>
+            <span aria-hidden className={cx('relative w-10 h-6 rounded-full shrink-0 transition-colors', tablet ? 'bg-copper' : 'bg-line')}>
+              <span className={cx('absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-card transition-[left]', tablet ? 'left-[18px]' : 'left-0.5')} />
+            </span>
+          </button>
+          {tablet && (
+            <div className="flex flex-col gap-3 animate-fade-up">
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" aria-pressed={!tabletSupplied} onClick={() => setTabletSupplied(false)} className={cx('chip justify-center h-11 px-2', !tabletSupplied && 'chip-on')}>Tablette du client</button>
+                <button type="button" aria-pressed={tabletSupplied} onClick={() => setTabletSupplied(true)} className={cx('chip justify-center h-11 px-2', tabletSupplied && 'chip-on')}>Tablette fournie</button>
+              </div>
+              <Field label="Prix de l’option (€ TTC) *"><Input inputMode="decimal" autoComplete="off" placeholder="Votre prix" value={tabletText} onChange={(e) => setTabletText(e.target.value)} /></Field>
+              {!tabletOk && <p className="text-[12.5px] font-semibold text-danger -mt-1">{Number.isNaN(tabletPrice) ? 'Entrez un montant, par exemple 500.' : 'Indiquez le prix : il sera affiché sur le devis.'}</p>}
+            </div>
+          )}
         </section>
 
         <section className="flex flex-col gap-2">
