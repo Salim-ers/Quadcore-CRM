@@ -38,7 +38,7 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
     setAddress([client?.address, client?.city].filter(Boolean).join(', '))
     setDeal({ offerId: offer.id, price: String(project.price_proposed ?? offer.price) }); setExtras([])
     setPlan(offer.id === 'complete' || offer.id === 'gestion' ? 'premium' : 'essentielle')
-    setManaged(true); setDomain(''); setYearlyText(''); setPayment('acompte'); setDelay(TERMS.delay)
+    setManaged(true); setDomain(''); setYearlyText(String(TERMS.hostingYearly)); setPayment('acompte'); setDelay(TERMS.delay)
     setBusy(false); setFile(null)
   }, [open, project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 

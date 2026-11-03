@@ -20,7 +20,7 @@ export const PLANS: { id: PlanId; label: string; price: number; target: string; 
 ]
 
 // Conditions par défaut : modifiables ici pour tous les devis
-export const TERMS = { deposit: 50, validityDays: 30, revisions: 2, noticeDays: 30, delay: '7 jours après la commande et la réception de vos contenus' }
+export const TERMS = { deposit: 50, validityDays: 30, revisions: 2, noticeDays: 30, hostingYearly: 300, delay: '7 jours après la commande et la réception de vos contenus' }
 
 export type PaymentId = 'acompte' | '3x' | '4x' | 'comptant'
 export const PAYMENTS: { id: PaymentId; label: string }[] = [

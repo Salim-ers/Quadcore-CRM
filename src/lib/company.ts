@@ -1,7 +1,7 @@
 /** La société, telle que publiée sur quad-core.fr : reprise sur les devis et les CGV. */
 export const COMPANY = {
   name: 'QUADCORE SAS',
-  capital: null as string | null, // obligatoire sur les documents commerciaux : à renseigner, ex. « 1 000 € »
+  capital: '1 000 €',
   address: '5 Rue du Docteur Roux',
   city: '60180 Nogent-sur-Oise',
   siret: '101 694 016 00013',
@@ -16,7 +16,7 @@ export const COMPANY = {
 }
 
 export const companyLegalLine = () => [
-  COMPANY.capital ? `${COMPANY.name} au capital de ${COMPANY.capital}` : COMPANY.name,
+  `${COMPANY.name} au capital de ${COMPANY.capital}`,
   `${COMPANY.address}, ${COMPANY.city}`,
   `SIRET ${COMPANY.siret}`,
   `RCS ${COMPANY.rcsCity} ${COMPANY.rcsNumber}`,

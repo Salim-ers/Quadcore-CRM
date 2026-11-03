@@ -11,7 +11,7 @@ export const cgvSections = (): { title: string; paragraphs: string[] }[] => [
   {
     title: 'Qui sommes-nous',
     paragraphs: [
-      `${COMPANY.name}, société par actions simplifiée${COMPANY.capital ? ` au capital de ${COMPANY.capital}` : ''}, siège : ${COMPANY.address}, ${COMPANY.city}, immatriculée au RCS de ${COMPANY.rcsCity} sous le numéro ${COMPANY.rcsNumber}, TVA intracommunautaire ${COMPANY.vat}, représentée par ${COMPANY.president}, Président. Contact : ${COMPANY.email}, ${COMPANY.phone}.`,
+      `${COMPANY.name}, société par actions simplifiée au capital de ${COMPANY.capital}, siège : ${COMPANY.address}, ${COMPANY.city}, immatriculée au RCS de ${COMPANY.rcsCity} sous le numéro ${COMPANY.rcsNumber}, TVA intracommunautaire ${COMPANY.vat}, représentée par ${COMPANY.president}, Président. Contact : ${COMPANY.email}, ${COMPANY.phone}.`,
       'Dans ces conditions, « QUADCORE » désigne cette société et « vous » désigne le client professionnel qui signe le devis.',
     ],
   },
