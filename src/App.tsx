@@ -12,6 +12,7 @@ import { ProjectDetail } from './features/projects/ProjectDetail'
 import { TasksPage } from './features/tasks/TasksPage'
 import { TicketsPage } from './features/tickets/TicketsPage'
 import { TicketDetail } from './features/tickets/TicketDetail'
+import { DocumentsPage } from './features/documents/DocumentsPage'
 import { TeamPage } from './features/team/TeamPage'
 import { useReminders } from './features/team/notifications'
 
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/suivi/:id" element={<TicketDetail />} />
         <Route path="/projets" element={<ProjectsPage />} />
         <Route path="/projets/:id" element={<ProjectDetail />} />
+        <Route path="/documents" element={<DocumentsPage />} />
         <Route path="/taches" element={<TasksPage />} />
         <Route path="/equipe" element={<TeamPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

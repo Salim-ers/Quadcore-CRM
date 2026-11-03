@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  Archive, ArchiveRestore, BellPlus, Camera, CheckSquare, ExternalLink, FolderPlus, Globe, History, Info, MapPin, MoreHorizontal, Paperclip, Pencil, Plus, Store, Trash2,
+  Archive, ArchiveRestore, BellPlus, Camera, CheckSquare, ExternalLink, FileText, FolderPlus, Globe, History, Info, MapPin, MoreHorizontal, Paperclip, Pencil, Plus, Store, Trash2,
 } from 'lucide-react'
 import { Page, PageHeader } from '../../components/Shell'
 import { Avatar, Empty, Fold, Sheet, StepSwitch, confirmDialog, cx } from '../../components/ui'
@@ -20,6 +20,7 @@ import { TaskRow } from '../tasks/TaskRow'
 import { TaskSheet, type TaskDraft } from '../tasks/TaskSheet'
 import { Attachments, Timeline } from '../shared/Timeline'
 import { TicketsSection } from '../tickets/TicketsSection'
+import { QuoteSheet } from '../documents/QuoteSheet'
 import type { Task } from '../../lib/types'
 
 export function ProspectDetail() {
@@ -33,6 +34,7 @@ export function ProspectDetail() {
   const flow = useProspectFlow()
   const [edit, setEdit] = useState(false)
   const [menu, setMenu] = useState(false)
+  const [quote, setQuote] = useState(false)
   const [taskSheet, setTaskSheet] = useState<{ task?: Task; draft?: TaskDraft } | null>(null)
   const logoInput = useRef<HTMLInputElement>(null)
   const logo = useFileUrl(p?.logo_path)
@@ -113,6 +115,7 @@ export function ProspectDetail() {
           <ContactActions phone={p.phone} email={p.email} instagramUrl={p.instagram_url} website={null} />
 
           {projects.map((pr) => <ProjectCard key={pr.id} project={pr} hideClient />)}
+          {projects.length > 0 && <button className="btn-soft w-full" onClick={() => setQuote(true)}><FileText size={17} />Devis et CGV</button>}
           {step === 'accepte' && projects.length === 0 && (
             <button className="btn-primary h-12" onClick={startSite}><FolderPlus size={18} />Ajouter le site</button>
           )}
@@ -149,6 +152,7 @@ export function ProspectDetail() {
       </Page>
 
       <ProspectForm prospect={p} open={edit} onClose={() => setEdit(false)} />
+      <QuoteSheet project={projects[0] ?? null} open={quote} onClose={() => setQuote(false)} />
       <TaskSheet open={!!taskSheet} onClose={() => setTaskSheet(null)} task={taskSheet?.task} draft={taskSheet?.draft} />
       <Sheet open={menu} onClose={() => setMenu(false)} title={p.name} size="sm">
         <div className="flex flex-col gap-1 -mx-2">

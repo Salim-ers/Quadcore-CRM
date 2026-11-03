@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { CheckSquare, ChevronDown, ChevronLeft, ChevronRight, Globe, Home, MoreHorizontal, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
+import { CheckSquare, ChevronDown, ChevronLeft, ChevronRight, FileText, Globe, Home, MoreHorizontal, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
 import { create } from 'zustand'
 import { useMe, useStore, backend } from '../data/store'
 import { todayStr } from '../lib/dates'
@@ -28,6 +28,7 @@ const NAV = [
   { to: '/projets', label: 'Sites', icon: Globe },
 ]
 const MORE = [
+  { to: '/documents', label: 'Devis et CGV', icon: FileText },
   { to: '/suivi', label: 'Tickets clients', icon: Ticket },
   { to: '/taches', label: 'Tâches', icon: CheckSquare },
   { to: '/equipe', label: 'Équipe', icon: Users },

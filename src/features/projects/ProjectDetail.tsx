@@ -18,6 +18,7 @@ import { ReportProblem, TicketsSection } from '../tickets/TicketsSection'
 import { TaskRow } from '../tasks/TaskRow'
 import { TaskSheet, type TaskDraft } from '../tasks/TaskSheet'
 import { MenuItem } from '../prospects/ProspectDetail'
+import { QuoteSheet } from '../documents/QuoteSheet'
 import type { Task } from '../../lib/types'
 
 export function ProjectDetail() {
@@ -32,6 +33,7 @@ export function ProjectDetail() {
   const [edit, setEdit] = useState(false)
   const [menu, setMenu] = useState(false)
   const [billing, setBilling] = useState(false)
+  const [quote, setQuote] = useState(false)
   const [taskSheet, setTaskSheet] = useState<{ task?: Task; draft?: TaskDraft } | null>(null)
   const tasks = useMemo(() => allTasks.filter((t) => t.project_id === id && t.status !== 'termine').sort((a, b) => (a.due_date ?? '9').localeCompare(b.due_date ?? '9')), [allTasks, id])
 
@@ -81,6 +83,7 @@ export function ProjectDetail() {
             </div>
           )}
 
+          <button className="btn-soft w-full" onClick={() => setQuote(true)}><FileText size={17} />Devis et CGV</button>
           <ReportProblem prospectId={p.prospect_id} projectId={p.id} />
           <TicketsSection prospectId={p.prospect_id} projectId={p.id} />
           <Fold title="Retouches" icon={<PencilRuler size={19} />} count={pending} defaultOpen={pending > 0}><Revisions project={p} /></Fold>
@@ -108,6 +111,7 @@ export function ProjectDetail() {
       </Page>
 
       <ProjectEditSheet project={p} open={edit} onClose={() => setEdit(false)} />
+      <QuoteSheet project={p} open={quote} onClose={() => setQuote(false)} />
       <TaskSheet open={!!taskSheet} onClose={() => setTaskSheet(null)} task={taskSheet?.task} draft={taskSheet?.draft} />
       <Sheet open={billing} onClose={() => setBilling(false)} title="Facturation" size="sm">
         <div className="flex flex-col gap-1 -mx-2">
