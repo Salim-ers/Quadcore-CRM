@@ -58,7 +58,7 @@ Pour que les e-mails portent le bon nom, renseignez **QUADCORE** dans **Neon ›
 ```bash
 APP_URL=https://quadcore-crm.vercel.app npm run neon:installer -- --envoyer-liens
 ```
-Chacun reçoit un lien pour choisir son mot de passe. **Il est valable 15 minutes** : passé ce délai, « Mot de passe oublié » sur l'écran de connexion en envoie un autre. Sur chaque téléphone, ouvrez l'URL et choisissez **Ajouter à l'écran d'accueil**.
+Chacun reçoit un lien pour choisir son mot de passe. **Il est valable 1 heure** : passé ce délai, « Mot de passe oublié » sur l'écran de connexion en envoie un autre. Sur chaque téléphone, ouvrez l'URL et choisissez **Ajouter à l'écran d'accueil**.
 
 ### e. E-mails
 L'expéditeur partagé de Neon (`auth@mail.myneon.app`) suffit pour démarrer, mais son débit est limité et le message ne vient pas de votre domaine. Pour écrire depuis `@quad-core.fr`, renseignez un service SMTP dans **Neon › Settings › Better Auth › Custom SMTP provider**.

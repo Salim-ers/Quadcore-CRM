@@ -3,7 +3,7 @@
 // Sans danger à relancer : ce qui existe déjà est conservé.
 //
 //   APP_URL=https://quadcore-crm.vercel.app npm run neon:installer
-//   Ajouter --envoyer-liens pour envoyer à chacun le lien « choisir mon mot de passe » (valable 15 minutes).
+//   Ajouter --envoyer-liens pour envoyer à chacun le lien « choisir mon mot de passe » (valable 1 heure).
 import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -92,7 +92,7 @@ try {
 await db.end()
 
 if (process.argv.includes('--envoyer-liens')) {
-  step('Liens « choisir mon mot de passe » (valables 15 minutes)')
+  step('Liens « choisir mon mot de passe » (valables 1 heure)')
   for (const m of team) {
     const res = await fetch(`${need('NEON_AUTH_BASE_URL').replace(/\/$/, '')}/request-password-reset`, {
       method: 'POST',

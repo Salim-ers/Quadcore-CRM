@@ -209,7 +209,7 @@ function InviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
         setBusy(false)
       }}><Mail size={17} />Envoyer l’invitation</button>}>
       <div className="flex flex-col gap-4">
-        <p className="text-[13.5px] text-muted">Un e-mail lui permettra de choisir son mot de passe et d’accéder à QUADCORE. Le lien est valable 15 minutes ; ensuite, « Mot de passe oublié » en envoie un nouveau.</p>
+        <p className="text-[13.5px] text-muted">Un e-mail lui permettra de choisir son mot de passe et d’accéder à QUADCORE. Le lien est valable 1 heure ; ensuite, « Mot de passe oublié » en envoie un nouveau.</p>
         {missing.length > 0 && (
           <div className="flex gap-2 flex-wrap">
             {missing.map((r) => (

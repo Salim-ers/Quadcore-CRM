@@ -214,7 +214,7 @@ export function createNeonBackend(dataApiUrl: string, filesUrl: string): Backend
 
 function translate(msg: string) {
   if (/invalid email or password|invalid_credentials/i.test(msg)) return 'E-mail ou mot de passe incorrect.'
-  if (/(invalid|expired).*token|token.*(expired|invalid)/i.test(msg)) return 'Ce lien a expiré (il est valable 15 minutes). Demandez-en un nouveau avec « Mot de passe oublié ».'
+  if (/(invalid|expired).*token|token.*(expired|invalid)/i.test(msg)) return 'Ce lien a expiré (il est valable 1 heure). Demandez-en un nouveau avec « Mot de passe oublié ».'
   if (/already exists/i.test(msg)) return 'Ce compte existe déjà.'
   if (/too many|rate limit/i.test(msg)) return 'Trop de tentatives, réessayez dans quelques minutes.'
   if (/password.*short/i.test(msg)) return 'Le mot de passe doit contenir au moins 8 caractères.'
