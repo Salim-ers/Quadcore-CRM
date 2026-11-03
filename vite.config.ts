@@ -57,8 +57,11 @@ export default defineConfig(({ mode, command }) => {
             workbox: {
               navigateFallback: '/index.html',
               // la session ne doit jamais venir d'un cache
-              navigateFallbackDenylist: [/^\/api\//],
+              // la brochure s'ouvre seule dans un onglet, sans repasser par l'application
+              navigateFallbackDenylist: [/^\/api\//, /^\/assets\/brochure/],
               globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+              // 2 Mo : chargée à l'ouverture de la page, pas à l'installation sur chaque téléphone
+              globIgnores: ['**/brochure-*'],
             },
           }),
     ],

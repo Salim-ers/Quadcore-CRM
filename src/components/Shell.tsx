@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { CheckSquare, ChevronDown, ChevronLeft, ChevronRight, FileText, Globe, Home, MoreHorizontal, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
+import { BookOpen, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, FileText, Globe, Home, MoreHorizontal, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
 import { create } from 'zustand'
 import { useMe, useStore, backend } from '../data/store'
 import { todayStr } from '../lib/dates'
@@ -29,6 +29,7 @@ const NAV = [
 ]
 const MORE = [
   { to: '/documents', label: 'Devis et CGV', icon: FileText },
+  { to: '/brochure', label: 'Brochure', icon: BookOpen },
   { to: '/suivi', label: 'Tickets clients', icon: Ticket },
   { to: '/taches', label: 'Tâches', icon: CheckSquare },
   { to: '/equipe', label: 'Équipe', icon: Users },
@@ -106,7 +107,8 @@ export function Shell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [setQuickAdd, newTicket])
 
-  const isDetail = /^\/(prospects|projets|suivi)\/[^/]+/.test(loc.pathname)
+  // Pas de bouton flottant sur une fiche, ni par-dessus la brochure
+  const hideFab = /^\/(prospects|projets|suivi)\/[^/]+/.test(loc.pathname) || loc.pathname === '/brochure'
 
   return (
     <div className="min-h-[100dvh] lg:flex">
@@ -179,7 +181,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </div>
 
       {/* ——— Bouton flottant (mobile) ——— */}
-      {!isDetail && (
+      {!hideFab && (
         <button
           onClick={() => (onSuivi ? newTicket() : setQuickAdd(true))}
           aria-label={onSuivi ? 'Nouveau ticket' : 'Ajouter un prospect'}
