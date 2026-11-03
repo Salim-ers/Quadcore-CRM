@@ -120,7 +120,7 @@ export function DueChip({ date, done, className }: { date: string | null; done?:
   )
 }
 
-export const euros = (value: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value)
+export const euros = (value: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: Number.isInteger(value) ? 0 : 2, maximumFractionDigits: 2 }).format(value)
 
 export function MoneyLabel({ value }: { value: number | null }) {
   if (value === null || value === undefined) return <span className="text-faint">—</span>

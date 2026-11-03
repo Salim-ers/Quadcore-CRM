@@ -59,7 +59,7 @@ export async function createProject(input: Partial<Project>) {
 /** Pré-remplit un site à partir d'une fiche prospect. */
 export function projectDraftFrom(p: Prospect): Partial<Project> {
   const service = (p.service ?? '').toLowerCase()
-  const type: Project['type'] = service.includes('e-commerce') ? 'ecommerce' : service.includes('click') ? 'click_collect' : service.includes('outil') ? 'application' : 'vitrine'
+  const type: Project['type'] = service.includes('e-commerce') || service.includes('solution complète') ? 'ecommerce' : service.includes('click') ? 'click_collect' : service.includes('outil') || service.includes('espace de gestion') ? 'application' : 'vitrine'
   return {
     name: `Site ${p.name}`,
     prospect_id: p.id,

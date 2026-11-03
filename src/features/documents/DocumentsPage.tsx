@@ -6,9 +6,9 @@ import { euros } from '../../components/bits'
 import { useStore } from '../../data/store'
 import { liveProjects, searchMatch } from '../../lib/derive'
 import type { Project } from '../../lib/types'
+import { OFFERS, PLANS, installments } from '../../lib/offers'
 import { CGV_VERSION } from './cgv'
 import { canShareFile, downloadFile, shareFile } from './deliver'
-import { OFFERS, PLANS } from './offers'
 import { QuoteSheet } from './QuoteSheet'
 
 const RECENT = 6
@@ -78,13 +78,16 @@ export function DocumentsPage() {
           <Fold title="Vos tarifs" icon={<Tags size={19} />}>
             <ul className="divide-y divide-line -mx-1 text-[14px]">
               {OFFERS.map((o) => (
-                <li key={o.id} className="flex items-baseline justify-between gap-3 px-1 py-2.5"><span>{o.label}</span><span className="font-semibold whitespace-nowrap">dès {euros(o.from)}</span></li>
+                <li key={o.id} className="px-1 py-2.5">
+                  <span className="flex items-baseline justify-between gap-3"><span>{o.label}</span><span className="font-semibold whitespace-nowrap">{euros(o.price)}</span></span>
+                  <span className="block text-[12.5px] text-muted mt-0.5">3 × {euros(installments(o.price, 3)[0])} ou 4 × {euros(installments(o.price, 4)[0])} sans frais</span>
+                </li>
               ))}
               {PLANS.filter((p) => p.price > 0).map((p) => (
-                <li key={p.id} className="flex items-baseline justify-between gap-3 px-1 py-2.5"><span>{p.label}</span><span className="font-semibold whitespace-nowrap">{String(p.price).replace('.', ',')} €/mois</span></li>
+                <li key={p.id} className="flex items-baseline justify-between gap-3 px-1 py-2.5"><span>{p.label}</span><span className="font-semibold whitespace-nowrap">{euros(p.price)}/mois</span></li>
               ))}
             </ul>
-            <p className="text-[12.5px] text-muted mt-2 flex items-center gap-1.5"><FileText size={14} className="shrink-0" />Prix TTC, repris de quad-core.fr.</p>
+            <p className="text-[12.5px] text-muted mt-2 flex items-center gap-1.5"><FileText size={14} className="shrink-0" />Prix TTC de votre plaquette, modifiables avec le crayon sur chaque site ou devis.</p>
           </Fold>
         </div>
       </Page>

@@ -1,5 +1,5 @@
 import { COMPANY } from '../../lib/company'
-import { PLANS, TERMS } from './offers'
+import { PLANS, TERMS } from '../../lib/offers'
 
 export const CGV_VERSION = 'novembre 2026'
 
@@ -24,7 +24,7 @@ export const cgvSections = (): { title: string; paragraphs: string[] }[] => [
   {
     title: 'Nos prestations',
     paragraphs: [
-      'Création de sites vitrines, référencement, outils de gestion sur mesure, solutions web complètes, cartes de visite et de fidélité digitales, maintenance, hébergement et gestion du nom de domaine. Le devis décrit ce qui est compris. Ce qui n’y figure pas fait l’objet d’un devis complémentaire.',
+      'Création de sites vitrines, référencement, espaces de gestion sur mesure, solutions complètes sur mesure, cartes de visite et de fidélité digitales, maintenance, hébergement et gestion du nom de domaine. Le devis décrit ce qui est compris. Ce qui n’y figure pas fait l’objet d’un devis complémentaire.',
     ],
   },
   {
@@ -37,8 +37,9 @@ export const cgvSections = (): { title: string; paragraphs: string[] }[] => [
     title: 'Prix et paiement',
     paragraphs: [
       'Les prix sont indiqués en euros, hors taxes et toutes taxes comprises, au taux de TVA en vigueur. Sauf autre indication au devis, l’acompte est dû à la commande et le solde à la mise en ligne. Les factures sont payables à réception, par virement ou par le moyen indiqué sur la facture. Aucun escompte n’est accordé en cas de paiement anticipé.',
+      'Le paiement en 3 ou 4 fois se fait sans frais : le premier versement est dû à la commande, les suivants chaque mois. Si une échéance reste impayée 15 jours après une relance, le solde devient immédiatement exigible.',
       'En cas de retard, des pénalités égales à trois fois le taux d’intérêt légal sont dues dès le lendemain de l’échéance, sans rappel, ainsi qu’une indemnité forfaitaire de 40 € pour frais de recouvrement (articles L441-10 et D441-5 du Code de commerce). Après une mise en demeure restée sans effet pendant 15 jours, nous pouvons suspendre les prestations en cours.',
-      'Si le droit de rétractation de l’article « Droit de rétractation » s’applique à vous, l’acompte n’est dû qu’à partir du 8e jour suivant la signature.',
+      'Si le droit de rétractation de l’article « Droit de rétractation » s’applique à vous, l’acompte ou le premier versement n’est dû qu’à partir du 8e jour suivant la signature.',
     ],
   },
   {
@@ -72,7 +73,7 @@ export const cgvSections = (): { title: string; paragraphs: string[] }[] => [
     title: 'Maintenance',
     paragraphs: [
       `La maintenance est facultative. Essentielle (${price(essentielle.price)}, pour un site vitrine) : ${essentielle.includes.join(', ').toLowerCase()}. Premium (${price(premium.price)}, pour une solution complète) : tout le contenu de la formule Essentielle, ${premium.includes.slice(1).join(', ').toLowerCase()}.`,
-      'Les petites modifications portent sur les textes et les images des pages existantes. Créer une page ou une fonction n’en fait pas partie, sauf avec la formule Premium, dans une mesure raisonnable.',
+      'Les petites modifications portent sur les textes et les images des pages existantes. Les évolutions mineures de la formule Premium portent sur de petits ajustements de ce qui existe déjà. Créer une nouvelle page ou une nouvelle fonction fait l’objet d’un devis.',
       `La maintenance commence à la mise en ligne et se facture chaque mois, sans durée minimale : vous l’arrêtez quand vous voulez par e-mail, avec un préavis de ${TERMS.noticeDays} jours. Nous pouvons faire évoluer ses tarifs en vous prévenant au moins ${TERMS.noticeDays} jours à l’avance.`,
       'Sans maintenance, les mises à jour et la sécurité du site sont à votre charge, et nos interventions font l’objet d’un devis.',
     ],

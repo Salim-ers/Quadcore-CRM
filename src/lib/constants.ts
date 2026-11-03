@@ -1,6 +1,7 @@
 import type {
   BillingStatus, Category, Channel, Priority, ProjectStatus, ProjectType, ProspectStatus, Role, TicketPriority, TicketStatus, TicketType, WorkStatus,
 } from './types'
+import { OFFERS } from './offers'
 import team from './team.json'
 
 /** Tons de statut : discrets, lisibles en clair comme en sombre, jamais de violet ni de néon. */
@@ -112,7 +113,7 @@ export const WORK_STATUSES: { value: WorkStatus; label: string; tone: Tone }[] =
 ]
 
 export const SOURCES = ['Instagram', 'Google Maps', 'Passage en boutique', 'Bouche-à-oreille', 'Facebook', 'TikTok', 'LinkedIn', 'Autre']
-export const SERVICES = ['Site vitrine premium', 'Site vitrine + SEO', 'E-commerce', 'Click & collect', 'Outil de gestion', 'Carte de visite digitale', 'Carte de fidélité digitale', 'Maintenance']
+export const SERVICES = [...OFFERS.map((o) => o.label), 'Maintenance']
 export const LOST_REASONS = ['Pas de budget', 'A déjà un site', 'Pas intéressé', 'Pas le bon moment', 'Concurrent choisi', 'Injoignable']
 
 export const MEMBER_COLORS = ['#AA543D', '#2F6B5E', '#3D5A80', '#8A6A2F', '#6B4E3D', '#52606D']

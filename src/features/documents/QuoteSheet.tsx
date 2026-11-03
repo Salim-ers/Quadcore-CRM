@@ -1,15 +1,14 @@
 import { useLayoutEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Download, Plus, Send, Trash2 } from 'lucide-react'
-import { Field, Input, Select, Sheet, cx } from '../../components/ui'
+import { Field, Input, Sheet, cx } from '../../components/ui'
 import { euros } from '../../components/bits'
 import { toast, useStore } from '../../data/store'
 import { updateProject, updateProspect, uploadAttachment } from '../../data/actions'
 import { parsePrice } from '../../lib/derive'
+import { OFFERS, PAYMENTS, PLANS, TERMS, offerById, offerFor, paymentText, planOf, quoteNumber, quoteTotals, type PaymentId, type PlanId } from '../../lib/offers'
 import type { Project, Prospect } from '../../lib/types'
-import { OFFERS, PLANS, TERMS, offerFor, planOf, quoteNumber, quoteTotals, type PlanId } from './offers'
 import { canShareFile, downloadFile, shareFile } from './deliver'
-
-const DEPOSITS = [30, 50, 100]
+import { OfferPrice, type Deal } from './OfferPrice'
 
 /** Tout ce qu'il faut pour vendre un site : le devis, les options de maintenance, les CGV et le formulaire de rétractation, en un PDF. */
 export function QuoteSheet({ project, open, onClose }: { project: Project | null; open: boolean; onClose: () => void }) {
@@ -20,14 +19,13 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
   const [contact, setContact] = useState('')
   const [address, setAddress] = useState('')
   const [email, setEmail] = useState('')
-  const [offerId, setOfferId] = useState(OFFERS[0].id)
-  const [priceText, setPriceText] = useState('')
+  const [deal, setDeal] = useState<Deal>({ offerId: OFFERS[0].id, price: String(OFFERS[0].price) })
   const [extras, setExtras] = useState<{ label: string; price: string }[]>([])
   const [plan, setPlan] = useState<PlanId>('essentielle')
   const [managed, setManaged] = useState(true)
   const [domain, setDomain] = useState('')
   const [yearlyText, setYearlyText] = useState('')
-  const [deposit, setDeposit] = useState(TERMS.deposit)
+  const [payment, setPayment] = useState<PaymentId>('acompte')
   const [delay, setDelay] = useState(TERMS.delay)
   const [busy, setBusy] = useState(false)
   const [file, setFile] = useState<File | null>(null)
@@ -38,14 +36,14 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
     const offer = offerFor(project, client)
     setName(client?.name ?? ''); setContact(client?.contact_name ?? ''); setEmail(client?.email ?? '')
     setAddress([client?.address, client?.city].filter(Boolean).join(', '))
-    setOfferId(offer.id); setPriceText(String(project.price_proposed ?? offer.from)); setExtras([])
-    setPlan(offer.id === 'complete' || offer.id === 'outil' ? 'premium' : 'essentielle')
-    setManaged(true); setDomain(''); setYearlyText(''); setDeposit(TERMS.deposit); setDelay(TERMS.delay)
+    setDeal({ offerId: offer.id, price: String(project.price_proposed ?? offer.price) }); setExtras([])
+    setPlan(offer.id === 'complete' || offer.id === 'gestion' ? 'premium' : 'essentielle')
+    setManaged(true); setDomain(''); setYearlyText(''); setPayment('acompte'); setDelay(TERMS.delay)
     setBusy(false); setFile(null)
   }, [open, project?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const offer = OFFERS.find((o) => o.id === offerId)!
-  const price = parsePrice(priceText)
+  const offer = offerById(deal.offerId) ?? OFFERS[0]
+  const price = parsePrice(deal.price)
   const yearly = parsePrice(yearlyText)
   const parsedExtras = extras.map((e) => ({ label: e.label.trim(), price: parsePrice(e.price) }))
   const extrasOk = parsedExtras.every((e) => e.label && e.price !== null && !Number.isNaN(e.price))
@@ -54,8 +52,7 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
   const totals = useMemo(() => quoteTotals({
     price: price !== null && !Number.isNaN(price) ? price : 0,
     extras: parsedExtras.filter((e) => e.price !== null && !Number.isNaN(e.price)) as { label: string; price: number }[],
-    deposit,
-  }), [price, deposit, extras]) // eslint-disable-line react-hooks/exhaustive-deps
+  }), [price, extras]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Complète la fiche avec ce qui manquait, sans jamais écraser ce qu'elle contient. */
   function fillClient(c: Prospect) {
@@ -63,6 +60,7 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
     if (!c.contact_name && contact.trim()) patch.contact_name = contact.trim()
     if (!c.email && email.trim()) patch.email = email.trim()
     if (!c.address && !c.city && address.trim()) patch.address = address.trim()
+    if (c.service !== offer.label) patch.service = offer.label
     if (Object.keys(patch).length) return updateProspect(c.id, patch)
   }
 
@@ -81,7 +79,7 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
         extras: parsedExtras as { label: string; price: number }[],
         plan,
         hosting: { managed, domain: domain.trim(), yearly },
-        deposit,
+        payment,
         delay: delay.trim(),
       })
       setFile(pdf)
@@ -140,17 +138,7 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
 
         <section className="flex flex-col gap-3">
           <h3 className="section-title">Offre</h3>
-          <Field label="Prestation">
-            <Select value={offerId} onChange={(e) => {
-              const next = OFFERS.find((o) => o.id === e.target.value)!
-              setOfferId(next.id)
-              if (project?.price_proposed == null && priceText === String(offer.from)) setPriceText(String(next.from))
-            }}>
-              {OFFERS.map((o) => <option key={o.id} value={o.id}>{o.label} (dès {euros(o.from)})</option>)}
-            </Select>
-          </Field>
-          <Field label="Prix (€ TTC) *"><Input inputMode="decimal" autoComplete="off" value={priceText} onChange={(e) => setPriceText(e.target.value)} /></Field>
-          {Number.isNaN(price) && <p className="text-[12.5px] font-semibold text-danger -mt-1">Entrez un montant, par exemple 900.</p>}
+          <OfferPrice value={deal} onChange={setDeal} />
           {extras.map((x, i) => (
             <div key={i} className="flex items-center gap-2">
               <Input aria-label="Ligne en plus" placeholder="Ex. Création du logo" value={x.label} onChange={(e) => setExtras((all) => all.map((o, j) => (j === i ? { ...o, label: e.target.value } : o)))} className="flex-1 min-w-0" />
@@ -169,7 +157,7 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
                 className={cx('text-left p-3 rounded-xl border transition', plan === p.id ? 'border-copper bg-copper/8' : 'border-line bg-surface')}>
                 <span className="flex items-baseline justify-between gap-3 font-semibold text-[14.5px]">
                   <span>{p.label}</span>
-                  <span className="whitespace-nowrap">{p.price ? `${String(p.price).replace('.', ',')} €/mois` : '0 €'}</span>
+                  <span className="whitespace-nowrap">{p.price ? `${euros(p.price)}/mois` : '0 €'}</span>
                 </span>
                 <span className="block text-[12.5px] text-muted mt-0.5">{planOf(p.id).target}</span>
               </button>
@@ -196,11 +184,11 @@ export function QuoteSheet({ project, open, onClose }: { project: Project | null
         <section className="flex flex-col gap-3">
           <h3 className="section-title">Paiement et délai</h3>
           <div>
-            <span className="field-label">Acompte à la commande</span>
-            <div className="grid grid-cols-3 gap-2">
-              {DEPOSITS.map((d) => <button key={d} type="button" aria-pressed={deposit === d} onClick={() => setDeposit(d)} className={cx('chip justify-center h-11', deposit === d && 'chip-on')}>{d === 100 ? 'Tout' : `${d} %`}</button>)}
+            <span className="field-label">Paiement</span>
+            <div className="grid grid-cols-2 gap-2">
+              {PAYMENTS.map((m) => <button key={m.id} type="button" aria-pressed={payment === m.id} onClick={() => setPayment(m.id)} className={cx('chip justify-center h-11 px-2', payment === m.id && 'chip-on')}>{m.label}</button>)}
             </div>
-            <p className="text-[12.5px] text-muted mt-1.5">{deposit === 100 ? `${euros(totals.ttc)} à la commande` : `${euros(totals.deposit)} à la commande, ${euros(totals.balance)} à la mise en ligne`}</p>
+            <p className="text-[12.5px] text-muted mt-1.5">{paymentText(payment, totals.ttc, euros)}</p>
           </div>
           <p className="text-[12.5px] leading-snug rounded-xl bg-amber-500/12 text-amber-900 dark:text-amber-200 p-3">
             Signature en boutique avec un client de 5 salariés ou moins : n’encaissez rien pendant 7 jours. Il peut se rétracter pendant 14 jours.

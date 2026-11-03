@@ -8,6 +8,7 @@ import type { Project, ProjectType, UUID } from '../../lib/types'
 import { createProject, projectDraftFrom, updateProject } from '../../data/actions'
 import { parsePrice } from '../../lib/derive'
 import { normalizeUrl } from '../../lib/links'
+import { OfferPrice, type Deal } from '../documents/OfferPrice'
 import { useStore } from '../../data/store'
 
 export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; onClose: () => void; prospectId?: UUID }) {
@@ -16,16 +17,16 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
   const [client, setClient] = useState<string>('')
   const [name, setName] = useState('')
   const [link, setLink] = useState('')
-  const [priceText, setPriceText] = useState('')
+  const [deal, setDeal] = useState<Deal>({ offerId: '', price: '' })
   const [touched, setTouched] = useState(false)
-  const price = parsePrice(priceText)
+  const price = parsePrice(deal.price)
 
   const sorted = useMemo(() => prospects.filter((p) => !p.archived).sort((a, b) =>
     (a.status === 'gagne' ? 0 : 1) - (b.status === 'gagne' ? 0 : 1) || a.name.localeCompare(b.name, 'fr')), [prospects])
 
   useEffect(() => {
     if (!open) return
-    setClient(prospectId ?? ''); setName(''); setLink(''); setPriceText(''); setTouched(false)
+    setClient(prospectId ?? ''); setName(''); setLink(''); setDeal({ offerId: '', price: '' }); setTouched(false)
   }, [open, prospectId])
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
         </Field>
         <Field label="Nom du site *"><Input value={name} onChange={(e) => { setName(e.target.value); setTouched(true) }} placeholder="Ex. Site Coffee Concept" /></Field>
         <Field label="Lien du site"><Input inputMode="url" autoCapitalize="none" autoCorrect="off" autoComplete="off" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…vercel.app" /></Field>
-        <Field label="Prix proposé (€)"><Input inputMode="decimal" autoComplete="off" value={priceText} onChange={(e) => setPriceText(e.target.value)} placeholder="900" /></Field>
+        <OfferPrice value={deal} onChange={setDeal} optional />
         <p className="text-[13px] text-muted -mt-1">Il arrive dans les sites livrés. Vous pourrez le passer en cours.</p>
       </div>
     </Sheet>

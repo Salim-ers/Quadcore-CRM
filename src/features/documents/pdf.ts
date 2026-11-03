@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf'
 import markUrl from '../../assets/mark-128.png'
 import { COMPANY, companyLegalLine } from '../../lib/company'
 import { CGV_VERSION, cgvSections, withdrawalForm } from './cgv'
-import { PLANS, TERMS, quoteTotals, withoutVat, type QuoteDraft } from './offers'
+import { PLANS, TERMS, paymentText, quoteTotals, withoutVat, type QuoteDraft } from '../../lib/offers'
 
 type RGB = [number, number, number]
 const COPPER: RGB = [164, 79, 57], INK: RGB = [23, 22, 24], MUTED: RGB = [108, 101, 93], LINE: RGB = [228, 220, 209], TINT: RGB = [246, 242, 236]
@@ -165,7 +165,7 @@ function quotePage(w: Writer, q: QuoteDraft, logo: string) {
     w.rule()
     w.y += 4.6
   }
-  row(q.offer.label, q.price, [q.offer.summary, ...q.offer.includes.map((i) => `- ${i}`)])
+  row(q.offer.label, q.price, q.offer.includes.map((i) => `- ${i}`))
   q.extras.forEach((e) => row(e.label, e.price, []))
 
   // Les totaux
@@ -183,10 +183,7 @@ function quotePage(w: Writer, q: QuoteDraft, logo: string) {
 
   // Le paiement
   w.heading('Paiement et délai')
-  const atOrder = q.deposit >= 100
-    ? `Paiement à la commande : ${money(totals.ttc)} TTC.`
-    : `Acompte à la commande : ${money(totals.deposit)} TTC (${q.deposit} %). Solde à la mise en ligne : ${money(totals.balance)} TTC.`
-  w.text(atOrder, { size: 9.5 })
+  w.text(paymentText(q.payment, totals.ttc, money), { size: 9.5 })
   w.text(`Mise en ligne prévue : ${q.delay}. ${TERMS.revisions} séries de retouches comprises.`, { size: 9.5 })
   w.text('Si le droit de rétractation s’applique à vous (contrat signé hors de nos locaux, cinq salariés au plus), aucun paiement n’est dû avant le 8e jour suivant la signature.', { size: 8.2, color: MUTED, after: 1 })
 

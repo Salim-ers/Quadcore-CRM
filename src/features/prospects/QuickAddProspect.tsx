@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, AtSign, Euro, Globe, Phone, MapPin } from 'lucide-react'
+import { ChevronDown, AtSign, Globe, Phone, MapPin } from 'lucide-react'
 import { Field, Input, Select, Sheet, TextArea, cx } from '../../components/ui'
 import { CategoryIcon, OwnerButton } from '../../components/bits'
 import { CATEGORIES, PRIORITIES, SERVICES, SOURCES } from '../../lib/constants'
@@ -8,16 +8,19 @@ import type { Category, Priority, UUID } from '../../lib/types'
 import { createProspect } from '../../data/actions'
 import { parsePrice } from '../../lib/derive'
 import { normalizeUrl } from '../../lib/links'
+import { offerById } from '../../lib/offers'
+import { OfferPrice, type Deal } from '../documents/OfferPrice'
 import { toast, useStore } from '../../data/store'
 
 const blank = () => ({
-  name: '', website_url: '', price: '', instagram: '', phone: '', city: '', category: null as Category | null,
+  name: '', website_url: '', instagram: '', phone: '', city: '', category: null as Category | null,
   contact_name: '', email: '', source: '', service: '', priority: 'normale' as Priority, notes: '',
 })
 
 /** Ajout express : seul le nom est obligatoire, le reste se complète plus tard. */
 export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [f, setF] = useState(blank)
+  const [deal, setDeal] = useState<Deal>({ offerId: '', price: '' })
   const [owner, setOwner] = useState<UUID | null>(null)
   const [more, setMore] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -27,7 +30,7 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
 
   useEffect(() => {
     if (open) {
-      setF(blank()); setOwner(userId); setMore(false)
+      setF(blank()); setDeal({ offerId: '', price: '' }); setOwner(userId); setMore(false)
       setTimeout(() => nameRef.current?.focus(), 120)
     }
   }, [open, userId])
@@ -39,7 +42,7 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
   })
 
   const hasLink = !!f.website_url.trim()
-  const price = hasLink ? parsePrice(f.price) : null
+  const price = hasLink ? parsePrice(deal.price) : null
 
   async function submit() {
     if (!f.name.trim()) { nameRef.current?.focus(); return }
@@ -56,7 +59,7 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
       contact_name: f.contact_name.trim() || null,
       email: f.email.trim() || null,
       source: f.source || (ig ? 'Instagram' : null),
-      service: f.service || null,
+      service: f.service || (hasLink && offerById(deal.offerId)?.label) || null,
       priority: f.priority,
       notes: f.notes.trim() || null,
       owner_id: owner,
@@ -80,13 +83,7 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
           <Globe size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
           <Input className="pl-10" inputMode="url" value={f.website_url} onChange={(e) => set('website_url', e.target.value)} placeholder="Lien du site" autoCapitalize="none" autoCorrect="off" autoComplete="off" />
         </label>
-        {hasLink && (
-          <label className="relative block animate-fade-up">
-            <span className="sr-only">Prix proposé</span>
-            <Euro size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
-            <Input className="pl-10" inputMode="decimal" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="Prix proposé" autoComplete="off" />
-          </label>
-        )}
+        {hasLink && <div className="animate-fade-up"><OfferPrice value={deal} onChange={setDeal} optional /></div>}
         <label className="relative block">
           <span className="sr-only">Téléphone</span>
           <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
