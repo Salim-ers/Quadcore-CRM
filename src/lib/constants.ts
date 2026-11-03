@@ -1,5 +1,5 @@
 import type {
-  BillingStatus, Category, Priority, ProjectStatus, ProjectType, ProspectStatus, WorkStatus,
+  BillingStatus, Category, Channel, Priority, ProjectStatus, ProjectType, ProspectStatus, TicketPriority, TicketStatus, TicketType, WorkStatus,
 } from './types'
 
 /** Tons de statut : discrets, lisibles en clair comme en sombre, jamais de violet ni de néon. */
@@ -95,8 +95,57 @@ export const LOST_REASONS = ['Pas de budget', 'A déjà un site', 'Pas intéress
 
 export const MEMBER_COLORS = ['#AA543D', '#2F6B5E', '#3D5A80', '#8A6A2F', '#6B4E3D', '#52606D']
 
+/** Les quatre associés : proposés en un geste dans « Inviter un collaborateur ». */
+export const TEAM_ROSTER = [
+  { first_name: 'Salim', last_name: 'EL RHALMANI' },
+  { first_name: 'Hasan', last_name: 'AKAR' },
+  { first_name: 'Sadish', last_name: 'AROUL' },
+  { first_name: 'Moustakine', last_name: 'MOUHAMAD' },
+]
+
+export const TICKET_STATUSES: StatusDef<TicketStatus>[] = [
+  { value: 'nouveau', label: 'Nouveau', tone: 'sky' },
+  { value: 'en_cours', label: 'En cours', tone: 'amber' },
+  { value: 'attente_client', label: 'En attente du client', short: 'Attente client', tone: 'copper' },
+  { value: 'resolu', label: 'Résolu', tone: 'green' },
+  { value: 'ferme', label: 'Fermé', tone: 'slate' },
+]
+export const TICKET_DONE: TicketStatus[] = ['resolu', 'ferme']
+
+/** `days` : délai de traitement proposé à la création, modifiable sur chaque ticket. */
+export const TICKET_PRIORITIES: { value: TicketPriority; label: string; tone: Tone; days: number }[] = [
+  { value: 'basse', label: 'Basse', tone: 'stone', days: 7 },
+  { value: 'normale', label: 'Normale', tone: 'sky', days: 3 },
+  { value: 'haute', label: 'Haute', tone: 'orange', days: 1 },
+  { value: 'urgente', label: 'Urgente', tone: 'rose', days: 0 },
+]
+
+export const TICKET_TYPES: { value: TicketType; label: string }[] = [
+  { value: 'demande', label: 'Demande' },
+  { value: 'incident', label: 'Panne / bug' },
+  { value: 'question', label: 'Question' },
+  { value: 'facturation', label: 'Facturation' },
+  { value: 'autre', label: 'Autre' },
+]
+
+export const CHANNELS: { value: Channel; label: string }[] = [
+  { value: 'telephone', label: 'Téléphone' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'email', label: 'E-mail' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'sur_place', label: 'Sur place' },
+  { value: 'autre', label: 'Autre' },
+]
+
+/** Au-delà, un client apparaît dans « Sans nouvelles ». */
+export const CLIENT_QUIET_DAYS = 30
+/** Au-delà, un ticket en attente du client remonte dans « À faire aujourd'hui ». */
+export const TICKET_WAIT_DAYS = 3
+
 export const prospectStatus = (s: ProspectStatus) => PROSPECT_STATUSES.find((x) => x.value === s)!
 export const projectStatus = (s: ProjectStatus) => PROJECT_STATUSES.find((x) => x.value === s)!
+export const ticketStatus = (s: TicketStatus) => TICKET_STATUSES.find((x) => x.value === s)!
+export const ticketPriority = (p: TicketPriority) => TICKET_PRIORITIES.find((x) => x.value === p)!
 export const categoryOf = (c: Category | null) => CATEGORIES.find((x) => x.value === c)
 export const labelOf = <T extends string>(list: { value: T; label: string }[], v: T | null | undefined) =>
   list.find((x) => x.value === v)?.label ?? '—'

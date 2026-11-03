@@ -1,49 +1,68 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ArrowRight, FileText, ImageIcon, MessageSquare, Paperclip, Send, Trash2, Upload } from 'lucide-react'
-import type { Attachment, EntityType, UUID } from '../../lib/types'
+import type { Attachment, Channel, EntityType, UUID } from '../../lib/types'
 import { useIsAdmin, useStore } from '../../data/store'
 import { addComment, deleteAttachment, deleteComment, uploadAttachment } from '../../data/actions'
 import { Avatar, Chips, Empty, Spinner, TextArea, confirmDialog, cx } from '../../components/ui'
+import { ChannelIcon } from '../../components/bits'
 import { relTime } from '../../lib/dates'
 import { describeActivity } from './activity'
-import { PROJECT_STATUSES, PROSPECT_STATUSES, TONES } from '../../lib/constants'
+import { CHANNELS, PROJECT_STATUSES, PROSPECT_STATUSES, TICKET_STATUSES, TONES, labelOf } from '../../lib/constants'
 import { fileUrlNow, useFileUrl } from '../../lib/useFileUrl'
 
-type Filter = 'all' | 'comments' | 'status'
+type Filter = 'all' | 'exchanges' | 'comments' | 'status'
 
-/** Fil d'un dossier : commentaires + activité + historique des statuts */
-export function Timeline({ entity, id, activityKey }: { entity: 'prospect' | 'project'; id: UUID; activityKey: 'prospect_id' | 'project_id' }) {
+/** Fil d'un dossier : échanges client + commentaires + activité + historique des statuts */
+export function Timeline({ entity, id, activityKey, onExchange }: {
+  entity: 'prospect' | 'project' | 'ticket'; id: UUID; activityKey: 'prospect_id' | 'project_id' | 'ticket_id'; onExchange?: () => void
+}) {
   const [filter, setFilter] = useState<Filter>('all')
   const comments = useStore((s) => s.db.comments)
   const activities = useStore((s) => s.db.activities)
   const history = useStore((s) => s.db.status_history)
   const profiles = useStore((s) => s.db.profiles)
+  const tickets = useStore((s) => s.db.tickets)
   const userId = useStore((s) => s.userId)
   const admin = useIsAdmin()
   const byId = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles])
+  // Sur une fiche client, les échanges notés sur ses tickets remontent aussi
+  const clientTickets = useMemo(() => new Map(entity === 'prospect' ? tickets.filter((t) => t.prospect_id === id).map((t) => [t.id, t]) : []), [entity, id, tickets])
+  const withExchanges = entity !== 'project'
 
   const items = useMemo(() => {
-    const c = comments.filter((x) => x.entity_type === entity && x.entity_id === id).map((x) => ({ kind: 'comment' as const, at: x.created_at, x }))
-    if (filter === 'comments') return c.sort((a, b) => (a.at < b.at ? 1 : -1))
+    const c = comments
+      .filter((x) => (x.entity_type === entity && x.entity_id === id) || (x.entity_type === 'ticket' && !!x.channel && clientTickets.has(x.entity_id)))
+      .map((x) => ({ kind: 'comment' as const, at: x.created_at, x }))
+    const recent = <T extends { at: string }>(l: T[]) => l.sort((a, b) => (a.at < b.at ? 1 : -1))
+    if (filter === 'exchanges') return recent(c.filter((i) => i.x.channel))
+    if (filter === 'comments') return recent(c.filter((i) => !i.x.channel))
     if (filter === 'status') {
-      return history.filter((h) => h.entity_type === entity && h.entity_id === id)
-        .map((h) => ({ kind: 'status' as const, at: h.created_at, h })).sort((a, b) => (a.at < b.at ? 1 : -1))
+      return recent(history.filter((h) => h.entity_type === entity && h.entity_id === id).map((h) => ({ kind: 'status' as const, at: h.created_at, h })))
     }
-    // Sur une fiche prospect, on ne répète pas les changements de statut des projets
+    // Les échanges sont déjà affichés ; sur une fiche prospect, on ne répète pas les changements de statut des projets
+    // ni le détail de la vie des tickets, qui reste sur le ticket lui-même
     const acts = activities
-      .filter((a) => a[activityKey] === id && !(entity === 'prospect' && a.project_id && a.type === 'project_status'))
+      .filter((a) => a[activityKey] === id && a.type !== 'contact_logged' &&
+        !(entity === 'prospect' && a.project_id && a.type === 'project_status') &&
+        !(entity !== 'ticket' && (a.type === 'ticket_status' || a.type === 'ticket_assigned')))
       .map((a) => ({ kind: 'activity' as const, at: a.created_at, a }))
-    return [...c, ...acts].sort((a, b) => (a.at < b.at ? 1 : -1))
-  }, [comments, activities, history, entity, id, filter, activityKey])
+    return recent([...c, ...acts])
+  }, [comments, activities, history, entity, id, filter, activityKey, clientTickets])
 
-  const statuses = entity === 'prospect' ? PROSPECT_STATUSES : PROJECT_STATUSES
+  const statuses = entity === 'prospect' ? PROSPECT_STATUSES : entity === 'project' ? PROJECT_STATUSES : TICKET_STATUSES
   const label = (v: string | null) => statuses.find((s) => s.value === v)
 
   return (
     <div>
-      <CommentComposer entity={entity} id={id} />
+      <CommentComposer entity={entity} id={id} withExchange={withExchanges} onExchange={onExchange} />
       <Chips className="mt-4 mb-3" value={filter} onChange={setFilter}
-        options={[{ value: 'all', label: 'Tout' }, { value: 'comments', label: 'Commentaires' }, { value: 'status', label: 'Historique des statuts' }]} />
+        options={[
+          { value: 'all' as const, label: 'Tout' },
+          ...(withExchanges ? [{ value: 'exchanges' as const, label: 'Échanges client' }] : []),
+          { value: 'comments' as const, label: withExchanges ? 'Notes internes' : 'Commentaires' },
+          { value: 'status' as const, label: withExchanges ? 'Statuts' : 'Historique des statuts' },
+        ]} />
       {items.length === 0 ? (
         <Empty icon={<MessageSquare size={24} />} title="Rien pour l’instant" text="Les échanges et changements apparaîtront ici." />
       ) : (
@@ -52,11 +71,18 @@ export function Timeline({ entity, id, activityKey }: { entity: 'prospect' | 'pr
             const last = i === items.length - 1
             if (it.kind === 'comment') {
               const author = it.x.author_id ? byId.get(it.x.author_id) : undefined
+              const fromTicket = it.x.entity_type === 'ticket' ? clientTickets.get(it.x.entity_id) : undefined
               return (
                 <li key={'c' + it.x.id} className="relative pl-11 pb-4">
                   {!last && <span className="absolute left-[15px] top-9 bottom-0 w-px bg-line" />}
                   <span className="absolute left-0 top-0"><Avatar profile={author} size={31} /></span>
-                  <div className="card p-3 shadow-none bg-surface">
+                  <div className={cx('card p-3 shadow-none', it.x.channel ? 'bg-copper/[0.05] border-copper/25' : 'bg-surface')}>
+                    {it.x.channel && (
+                      <p className="flex items-center gap-1.5 text-[12px] font-bold text-copper-ink mb-1">
+                        <ChannelIcon channel={it.x.channel} size={13.5} />Échange client · {labelOf(CHANNELS, it.x.channel)}
+                        {fromTicket && <Link to={`/suivi/${fromTicket.id}`} className="ml-auto underline underline-offset-2">#{fromTicket.number}</Link>}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-bold text-[13.5px]">{author?.first_name ?? '—'}</span>
                       <span className="text-[12px] text-faint flex-1">{relTime(it.x.created_at)}</span>
@@ -92,7 +118,7 @@ export function Timeline({ entity, id, activityKey }: { entity: 'prospect' | 'pr
               <li key={'a' + it.a.id} className="relative pl-11 pb-4">
                 {!last && <span className="absolute left-[15px] top-8 bottom-0 w-px bg-line" />}
                 <span className={cx('absolute left-0 top-0 w-[31px] h-[31px] rounded-full flex items-center justify-center', d.tone)}>{d.icon}</span>
-                <p className="text-[14px] leading-snug pt-1">{d.text}</p>
+                <p className="text-[14px] leading-snug pt-1">{it.a.ticket_id && entity !== 'ticket' ? <Link to={`/suivi/${it.a.ticket_id}`} className="hover:text-copper-ink">{d.text}</Link> : d.text}</p>
                 <p className="text-[12.5px] text-faint mt-0.5">{relTime(it.a.created_at)}</p>
               </li>
             )
@@ -103,24 +129,53 @@ export function Timeline({ entity, id, activityKey }: { entity: 'prospect' | 'pr
   )
 }
 
-export function CommentComposer({ entity, id, placeholder = 'Ajouter un commentaire interne…' }: { entity: EntityType; id: UUID; placeholder?: string }) {
+/** withExchange : permet de noter un échange avec le client, pas seulement un commentaire interne */
+export function CommentComposer({ entity, id, placeholder = 'Ajouter un commentaire interne…', withExchange, onExchange }: {
+  entity: EntityType; id: UUID; placeholder?: string; withExchange?: boolean; onExchange?: () => void
+}) {
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
+  const [channel, setChannel] = useState<Channel | null>(null)
+  const [lastChannel, setLastChannel] = useState<Channel>('telephone')
   const send = async () => {
     if (!body.trim()) return
     setBusy(true)
-    const ok = await addComment(entity, id, body)
+    const ok = await addComment(entity, id, body, channel)
     setBusy(false)
-    if (ok) setBody('')
+    if (ok) {
+      setBody('')
+      if (channel) onExchange?.()
+    }
   }
   return (
-    <div className="relative">
-      <TextArea rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder={placeholder} className="pr-14"
-        onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send() }} />
-      <button onClick={send} disabled={!body.trim() || busy} aria-label="Envoyer"
-        className="absolute right-2 bottom-2 w-10 h-10 rounded-xl bg-copper text-onCopper flex items-center justify-center disabled:opacity-30 transition active:scale-95">
-        {busy ? <Spinner className="w-4 h-4" /> : <Send size={17} />}
-      </button>
+    <div>
+      {withExchange && (
+        <>
+          <div className="grid grid-cols-2 gap-1 bg-sunken rounded-xl p-1 mb-2">
+            {([[false, 'Note interne'], [true, 'Échange client']] as const).map(([on, l]) => (
+              <button key={l} type="button" aria-pressed={!!channel === on} onClick={() => setChannel(on ? lastChannel : null)}
+                className={cx('h-9 rounded-lg text-[13.5px] font-semibold transition', !!channel === on ? 'bg-surface shadow-card' : 'text-muted')}>{l}</button>
+            ))}
+          </div>
+          {channel && (
+            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-2">
+              {CHANNELS.map((c) => (
+                <button key={c.value} type="button" onClick={() => { setChannel(c.value); setLastChannel(c.value) }} className={cx('chip h-9 min-h-0 shrink-0', channel === c.value && 'chip-on')}>
+                  <ChannelIcon channel={c.value} />{c.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      <div className="relative">
+        <TextArea rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder={channel ? 'Ce qui a été dit, ce qui a été convenu…' : placeholder} className="pr-14"
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send() }} />
+        <button onClick={send} disabled={!body.trim() || busy} aria-label="Envoyer"
+          className="absolute right-2 bottom-2 w-10 h-10 rounded-xl bg-copper text-onCopper flex items-center justify-center disabled:opacity-30 transition active:scale-95">
+          {busy ? <Spinner className="w-4 h-4" /> : <Send size={17} />}
+        </button>
+      </div>
     </div>
   )
 }

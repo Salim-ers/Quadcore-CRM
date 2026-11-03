@@ -1,5 +1,5 @@
-import type { DB, Project, Prospect, Task, UUID } from './types'
-import { PROSPECT_CLOSED } from './constants'
+import type { DB, Project, Prospect, Task, Ticket, UUID } from './types'
+import { CLIENT_QUIET_DAYS, PROSPECT_CLOSED, TICKET_DONE, TICKET_WAIT_DAYS, ticketPriority } from './constants'
 import { addDaysStr, endOfWeekStr, todayStr } from './dates'
 
 export const activeProspects = (db: DB) => db.prospects.filter((p) => !p.archived && !PROSPECT_CLOSED.includes(p.status))
@@ -31,6 +31,105 @@ export type TodayItem =
   | { kind: 'revisions'; id: string; project: Project; remaining: number; total: number }
   | { kind: 'delivery'; id: string; project: Project; late: boolean }
   | { kind: 'validation'; id: string; project: Project; days: number }
+  | { kind: 'ticket'; id: string; ticket: Ticket; late: boolean }
+  | { kind: 'ticket_wait'; id: string; ticket: Ticket; days: number }
+
+// ———————————————————————— Suivi clients ————————————————————————
+export const isTicketOpen = (t: Ticket) => !TICKET_DONE.includes(t.status)
+/** Le délai ne court pas pendant qu'on attend le client. */
+export const isTicketLate = (t: Ticket, today = todayStr()) =>
+  isTicketOpen(t) && t.status !== 'attente_client' && !!t.due_date && t.due_date < today
+export const daysSince = (iso: string | null | undefined) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : 0)
+export const dueForPriority = (p: Ticket['priority']) => addDaysStr(ticketPriority(p).days)
+export const ticketRef = (t: Pick<Ticket, 'number'>) => (t.number ? `#${t.number}` : '#…')
+
+/** Les tickets d'un client archivé sont masqués, comme sa fiche. */
+export function liveTickets(db: DB) {
+  const archived = new Set(db.prospects.filter((p) => p.archived).map((p) => p.id))
+  return db.tickets.filter((t) => !archived.has(t.prospect_id))
+}
+
+export function ticketCounts(db: DB) {
+  const open = liveTickets(db).filter(isTicketOpen)
+  return {
+    open: open.length,
+    late: open.filter((t) => isTicketLate(t)).length,
+    waiting: open.filter((t) => t.status === 'attente_client').length,
+    unassigned: open.filter((t) => !t.assignee_id).length,
+  }
+}
+
+export type TicketView = 'ouverts' | 'mine' | 'unassigned' | 'late' | 'attente' | 'termines'
+
+export function filterTickets(tickets: Ticket[], view: TicketView, userId: UUID | null) {
+  const today = todayStr()
+  const f = tickets.filter((t) => {
+    switch (view) {
+      case 'ouverts': return isTicketOpen(t)
+      case 'mine': return isTicketOpen(t) && t.assignee_id === userId
+      case 'unassigned': return isTicketOpen(t) && !t.assignee_id
+      case 'late': return isTicketLate(t, today)
+      case 'attente': return t.status === 'attente_client'
+      case 'termines': return !isTicketOpen(t)
+    }
+  })
+  if (view === 'termines') return f.sort((a, b) => ((a.resolved_at ?? '') < (b.resolved_at ?? '') ? 1 : -1))
+  const pr = { urgente: 0, haute: 1, normale: 2, basse: 3 }
+  return f.sort((a, b) =>
+    Number(isTicketLate(b, today)) - Number(isTicketLate(a, today)) ||
+    pr[a.priority] - pr[b.priority] ||
+    (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999') ||
+    (a.created_at < b.created_at ? -1 : 1))
+}
+
+/** Dernier échange noté avec chaque client : sur sa fiche, sur ses tickets, ou la demande elle-même. */
+export function lastContacts(db: DB) {
+  const owner = new Map(db.tickets.map((t) => [t.id, t.prospect_id]))
+  const last = new Map<UUID, string>()
+  const note = (id: UUID | undefined, at: string) => { if (id && at > (last.get(id) ?? '')) last.set(id, at) }
+  for (const t of db.tickets) if (t.channel) note(t.prospect_id, t.created_at)
+  for (const c of db.comments) {
+    if (!c.channel) continue
+    if (c.entity_type === 'prospect') note(c.entity_id, c.created_at)
+    if (c.entity_type === 'ticket') note(owner.get(c.entity_id), c.created_at)
+  }
+  return last
+}
+
+export interface ClientSummary {
+  client: Prospect
+  open: number
+  late: number
+  total: number
+  lastContact: string | null
+  quiet: boolean
+  projects: Project[]
+}
+
+/** Un client est une fiche gagnée. Ceux qui demandent de l'attention passent en premier. */
+export function clientSummaries(db: DB): ClientSummary[] {
+  const contacts = lastContacts(db)
+  const tickets = liveTickets(db)
+  return db.prospects
+    .filter((p) => !p.archived && p.status === 'gagne')
+    .map((client) => {
+      const mine = tickets.filter((t) => t.prospect_id === client.id)
+      const lastContact = contacts.get(client.id) ?? null
+      const open = mine.filter(isTicketOpen).length
+      return {
+        client,
+        open,
+        late: mine.filter((t) => isTicketLate(t)).length,
+        total: mine.length,
+        lastContact,
+        quiet: open === 0 && daysSince(lastContact ?? client.updated_at) >= CLIENT_QUIET_DAYS,
+        projects: db.projects.filter((x) => x.prospect_id === client.id && !x.archived),
+      }
+    })
+    .sort((a, b) =>
+      b.late - a.late || b.open - a.open || Number(b.quiet) - Number(a.quiet) ||
+      (a.lastContact ?? '').localeCompare(b.lastContact ?? '') || a.client.name.localeCompare(b.client.name, 'fr'))
+}
 
 /** Actions prioritaires du jour — pour une personne (ou toute l'équipe si userId = null). */
 export function todayItems(db: DB, userId: UUID | null): TodayItem[] {
@@ -62,10 +161,23 @@ export function todayItems(db: DB, userId: UUID | null): TodayItem[] {
     }
   }
 
+  for (const t of liveTickets(db)) {
+    if (!isTicketOpen(t)) continue
+    if (t.status === 'attente_client') {
+      const days = daysSince(t.status_changed_at)
+      if (mine(t.assignee_id) && days >= TICKET_WAIT_DAYS) items.push({ kind: 'ticket_wait', id: 'w' + t.id, ticket: t, days })
+      continue
+    }
+    // un ticket sans responsable concerne tout le monde, sinon personne ne le prend
+    if (!t.assignee_id || (mine(t.assignee_id) && (t.priority === 'urgente' || (!!t.due_date && t.due_date <= today)))) {
+      items.push({ kind: 'ticket', id: 'k' + t.id, ticket: t, late: isTicketLate(t, today) })
+    }
+  }
+
   const rank = (i: TodayItem) =>
     ('late' in i && i.late ? 0 : 10) +
-    (i.kind === 'task' && i.task.priority === 'haute' ? 0 : 1) +
-    ({ followup: 1, task: 2, revisions: 3, delivery: 4, validation: 5 } as const)[i.kind]
+    ((i.kind === 'task' && i.task.priority === 'haute') || (i.kind === 'ticket' && i.ticket.priority === 'urgente') ? 0 : 1) +
+    ({ ticket: 0, followup: 1, task: 2, revisions: 3, delivery: 4, validation: 5, ticket_wait: 5 } as const)[i.kind]
   return items.sort((a, b) => rank(a) - rank(b))
 }
 

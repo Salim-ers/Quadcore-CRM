@@ -13,7 +13,7 @@ const FORCE_DEMO = __SINGLE_FILE__ || import.meta.env.VITE_DEMO === '1'
 export const backend: Backend = !FORCE_DEMO && SB_URL && SB_KEY ? createSupabaseBackend(SB_URL, SB_KEY) : createDemoBackend()
 
 const empty = (): DB => ({
-  profiles: [], prospects: [], projects: [], revisions: [], tasks: [], comments: [], attachments: [], status_history: [], activities: [],
+  profiles: [], prospects: [], projects: [], revisions: [], tasks: [], tickets: [], comments: [], attachments: [], status_history: [], activities: [],
 })
 
 export interface Toast { id: number; message: string; tone: 'default' | 'error' | 'success'; action?: { label: string; run: () => void } }
@@ -61,24 +61,35 @@ export function applyChange(table: TableName, event: ChangeEvent, row: Record<st
 
 // ———————————————————————— Session ————————————————————————
 let unsubscribe: (() => void) | null = null
+// Au démarrage, boot() et supabase-js annoncent tous les deux la session : un seul chargement
+// par compte, et seul le dernier demandé a le droit d'écrire l'état et de s'abonner au temps réel.
+let loadingFor: UUID | null = null
+let sessionRun = 0
 
 async function loadSession(userId: UUID | null) {
+  if (userId && userId === loadingFor) return
+  const run = ++sessionRun
+  loadingFor = null
   unsubscribe?.(); unsubscribe = null
   if (!userId) { set({ phase: 'signedOut', userId: null, db: empty() }); return }
   if (backend.needsPasswordSetup()) { set({ phase: 'setPassword', userId }); return }
+  loadingFor = userId
   set({ phase: 'loading', userId })
   try {
     const db = await backend.loadAll()
+    if (run !== sessionRun) return
     sortActivity(db.activities)
     const me = db.profiles.find((p) => p.id === userId)
     if (!me || !me.active) {
-      set({ phase: 'error', error: "Votre compte n'a pas (ou plus) accès à QUADCORE CRM. Contactez un administrateur." })
+      set({ phase: 'error', error: "Votre compte n'a pas (ou plus) accès à QUADCORE. Contactez un administrateur." })
       return
     }
     set({ db, phase: 'ready', error: null })
     unsubscribe = backend.subscribe(applyChange)
   } catch (e) {
-    set({ phase: 'error', error: (e as Error).message })
+    if (run === sessionRun) set({ phase: 'error', error: (e as Error).message })
+  } finally {
+    if (run === sessionRun) loadingFor = null
   }
 }
 
@@ -88,12 +99,18 @@ export async function boot() {
   })
   loadSession(await backend.currentUserId())
   if (typeof window !== 'undefined') {
-    window.addEventListener('online', async () => {
-      set({ online: true })
-      // resynchronise tout ce qui a pu changer pendant la coupure
+    // resynchronise tout ce qui a pu changer pendant la coupure
+    const resync = async () => {
       if (get().phase === 'ready') { try { const db = await backend.loadAll(); sortActivity(db.activities); set({ db }) } catch { /* noop */ } }
-    })
+    }
+    window.addEventListener('online', () => { set({ online: true }); resync() })
     window.addEventListener('offline', () => set({ online: false }))
+    // un téléphone coupe le temps réel quand l'app passe en arrière-plan, sans événement « offline »
+    let hiddenAt = 0
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) hiddenAt = Date.now()
+      else if (hiddenAt && Date.now() - hiddenAt > 30_000) resync()
+    })
   }
 }
 

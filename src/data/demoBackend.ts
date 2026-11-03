@@ -8,7 +8,7 @@ import type { Backend, ChangeEvent, ChangeListener } from './backend'
 import type { Activity, ActivityType, DB, Profile, Row, TableName, UUID } from '../lib/types'
 import { buildSeed } from './seed'
 
-const KEY = 'qc-demo-db-v1'
+const KEY = 'qc-demo-db-v2'
 const USER_KEY = 'qc-demo-user'
 
 const uuid = () =>
@@ -40,14 +40,20 @@ const DEFAULTS: { [T in TableName]?: Record<string, unknown> } = {
     description: null, assignee_id: null, due_date: null, priority: 'normale', status: 'a_faire',
     prospect_id: null, project_id: null, is_follow_up: false, completed_at: null,
   },
-  comments: {},
+  tickets: {
+    project_id: null, description: null, type: 'demande', channel: null, priority: 'normale', status: 'nouveau',
+    assignee_id: null, due_date: null, resolved_at: null,
+  },
+  comments: { channel: null },
   attachments: { mime_type: null, size_bytes: null },
 }
 const CREATOR_FIELD: { [T in TableName]?: string } = {
-  prospects: 'created_by', projects: 'created_by', revisions: 'created_by', tasks: 'created_by',
+  prospects: 'created_by', projects: 'created_by', revisions: 'created_by', tasks: 'created_by', tickets: 'created_by',
   comments: 'author_id', attachments: 'uploaded_by',
 }
-const TOUCHED: TableName[] = ['prospects', 'projects', 'revisions', 'tasks']
+const TOUCHED: TableName[] = ['prospects', 'projects', 'revisions', 'tasks', 'tickets']
+const DONE = ['resolu', 'ferme']
+const POLYMORPHIC: { [T in TableName]?: string } = { prospects: 'prospect', projects: 'project', revisions: 'revision', tasks: 'task', tickets: 'ticket' }
 
 type AnyRow = Record<string, unknown> & { id: UUID }
 
@@ -68,11 +74,11 @@ export class DemoEngine {
     this.table(table).push(row)
     this.emit(table, 'INSERT', row)
   }
-  private activity(type: ActivityType, prospect_id: UUID | null, project_id: UUID | null, meta: Record<string, unknown>) {
-    const a: Activity = { id: uuid(), type, actor_id: this.actor, prospect_id, project_id, meta, created_at: this.now() }
+  private activity(type: ActivityType, prospect_id: UUID | null, project_id: UUID | null, meta: Record<string, unknown>, ticket_id: UUID | null = null) {
+    const a: Activity = { id: uuid(), type, actor_id: this.actor, prospect_id, project_id, ticket_id, meta, created_at: this.now() }
     this.push('activities', a as unknown as AnyRow)
   }
-  private history(entity_type: 'prospect' | 'project', entity_id: UUID, from: string | null, to: string, note: string | null = null) {
+  private history(entity_type: 'prospect' | 'project' | 'ticket', entity_id: UUID, from: string | null, to: string, note: string | null = null) {
     this.push('status_history', {
       id: uuid(), entity_type, entity_id, from_status: from, to_status: to, note, changed_by: this.actor, created_at: this.now(),
     })
@@ -87,6 +93,13 @@ export class DemoEngine {
     if (cf && row[cf] === undefined) row[cf] = this.actor
     if ((table === 'tasks' || table === 'revisions') && row.status === 'termine' && !row.completed_at) row.completed_at = ts
     if (table === 'prospects' && !String(row.name ?? '').trim()) throw new Error('Le nom du commerce est obligatoire.')
+    if (table === 'tickets') {
+      if (!String(row.subject ?? '').trim()) throw new Error('L’objet du ticket est obligatoire.')
+      if (!this.table('prospects').some((p) => p.id === row.prospect_id)) throw new Error('Un ticket doit être rattaché à un client.')
+      row.number = Math.max(1000, ...this.table('tickets').map((t) => t.number as number)) + 1
+      row.status_changed_at = ts
+      if (DONE.includes(row.status as string)) row.resolved_at = ts
+    }
     this.push(table, row)
     this.afterInsert(table, row)
     return row
@@ -111,6 +124,12 @@ export class DemoEngine {
       if (row.status === 'termine' && old.status !== 'termine') row.completed_at = this.now()
       if (row.status !== 'termine') row.completed_at = null
     }
+    if (table === 'tickets') {
+      row.number = old.number
+      if (row.status !== old.status) row.status_changed_at = this.now()
+      if (DONE.includes(row.status as string)) { if (!DONE.includes(old.status as string)) row.resolved_at = this.now() }
+      else row.resolved_at = null
+    }
     list[i] = row
     this.emit(table, 'UPDATE', row)
     this.afterUpdate(table, old, row)
@@ -118,7 +137,7 @@ export class DemoEngine {
   }
 
   remove(table: TableName, id: UUID) {
-    if ((table === 'prospects' || table === 'projects') && !this.isAdmin())
+    if ((table === 'prospects' || table === 'projects' || table === 'tickets') && !this.isAdmin())
       throw new Error('Seul un administrateur peut supprimer définitivement un dossier.')
     const list = this.table(table)
     const i = list.findIndex((r) => r.id === id)
@@ -132,15 +151,32 @@ export class DemoEngine {
     if (table === 'projects') {
       cascade('revisions', (r) => r.project_id === id)
       cascade('tasks', (r) => r.project_id === id)
+      for (const t of this.table('tickets').filter((t) => t.project_id === id)) this.update('tickets', t.id, { project_id: null })
     }
     if (table === 'prospects') {
       cascade('tasks', (r) => r.prospect_id === id)
+      cascade('tickets', (r) => r.prospect_id === id)
       for (const p of this.table('projects').filter((p) => p.prospect_id === id)) this.update('projects', p.id, { prospect_id: null })
     }
+    const kind = POLYMORPHIC[table]
+    if (kind) for (const t of ['comments', 'attachments', 'status_history'] as const) cascade(t, (r) => r.entity_type === kind && r.entity_id === id)
   }
 
-  // ———————————————— « triggers » (miroir de 0001_quadcore_crm.sql) ————————————————
+  // ———————————————— « triggers » (miroir de supabase/migrations) ————————————————
   private afterInsert(table: TableName, r: AnyRow) {
+    if (table === 'tickets') {
+      const client = this.table('prospects').find((x) => x.id === r.prospect_id)
+      this.history('ticket', r.id, null, r.status as string)
+      this.activity('ticket_opened', r.prospect_id as UUID, (r.project_id as UUID) ?? null, { name: client?.name, number: r.number, subject: r.subject }, r.id)
+    }
+    if (table === 'comments' && r.channel && (r.entity_type === 'ticket' || r.entity_type === 'prospect')) {
+      const ticket = r.entity_type === 'ticket' ? this.table('tickets').find((x) => x.id === r.entity_id) : undefined
+      const prospectId = (ticket ? ticket.prospect_id : r.entity_id) as UUID
+      const client = this.table('prospects').find((x) => x.id === prospectId)
+      if (client) {
+        this.activity('contact_logged', prospectId, (ticket?.project_id as UUID) ?? null, { name: client.name, channel: r.channel, number: ticket?.number ?? null }, ticket?.id ?? null)
+      }
+    }
     if (table === 'prospects') {
       this.history('prospect', r.id, null, r.status as string)
       this.activity('prospect_added', r.id, null, { name: r.name })
@@ -167,6 +203,20 @@ export class DemoEngine {
   }
 
   private afterUpdate(table: TableName, old: AnyRow, r: AnyRow) {
+    if (table === 'tickets') {
+      const client = this.table('prospects').find((x) => x.id === r.prospect_id)
+      const meta = { name: client?.name, number: r.number, subject: r.subject }
+      if (old.status !== r.status) {
+        this.history('ticket', r.id, old.status as string, r.status as string)
+        const t: ActivityType =
+          r.status === 'resolu' ? 'ticket_resolved' : DONE.includes(old.status as string) && !DONE.includes(r.status as string) ? 'ticket_reopened' : 'ticket_status'
+        this.activity(t, r.prospect_id as UUID, (r.project_id as UUID) ?? null, { ...meta, from: old.status, to: r.status }, r.id)
+      }
+      if (old.assignee_id !== r.assignee_id) {
+        const dest = this.db.profiles.find((p) => p.id === r.assignee_id)
+        this.activity('ticket_assigned', r.prospect_id as UUID, (r.project_id as UUID) ?? null, { ...meta, to: r.assignee_id, to_name: dest?.first_name ?? null }, r.id)
+      }
+    }
     if (table === 'prospects' && old.status !== r.status) {
       this.history('prospect', r.id, old.status as string, r.status as string, r.status === 'perdu' ? (r.lost_reason as string) : null)
       const t: ActivityType =
@@ -194,6 +244,7 @@ export class DemoEngine {
 
 export function createDemoBackend(): Backend {
   let engine: DemoEngine
+  safeDel('qc-demo-db-v1') // ancienne démo : autre équipe, pas de tickets
   const stored = safeGet(KEY)
   try {
     engine = new DemoEngine(stored ? (JSON.parse(stored) as DB) : buildSeed())

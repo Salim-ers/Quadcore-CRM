@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════
---  QUADCORE CRM — schéma complet
+--  QUADCORE — schéma complet
 --  À exécuter une fois dans Supabase › SQL Editor (ou `supabase db push`).
 --  Contenu : tables, contraintes, RLS, historique + activité automatiques
 --  (triggers), temps réel, stockage des fichiers.

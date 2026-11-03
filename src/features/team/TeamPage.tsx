@@ -8,7 +8,7 @@ import { Avatar, Badge, Field, Input, Section, Sheet, confirmDialog, cx } from '
 import { backend, toast, updateRow, useIsAdmin, useMe, useStore } from '../../data/store'
 import { archive } from '../../data/actions'
 import { fullName } from '../../lib/derive'
-import { MEMBER_COLORS, PROJECT_DONE, PROSPECT_CLOSED } from '../../lib/constants'
+import { MEMBER_COLORS, PROJECT_DONE, PROSPECT_CLOSED, TEAM_ROSTER, TICKET_DONE } from '../../lib/constants'
 import { getTheme, setTheme, type ThemePref } from '../../lib/theme'
 import { useNotificationPermission } from './notifications'
 import { resetDemo } from '../../data/demoBackend'
@@ -29,6 +29,7 @@ export function TeamPage() {
     prospects: db.prospects.filter((x) => x.owner_id === p.id && !x.archived && !PROSPECT_CLOSED.includes(x.status)).length,
     projects: db.projects.filter((x) => x.owner_id === p.id && !x.archived && !PROJECT_DONE.includes(x.status)).length,
     tasks: db.tasks.filter((x) => x.assignee_id === p.id && x.status !== 'termine').length,
+    tickets: db.tickets.filter((x) => x.assignee_id === p.id && !TICKET_DONE.includes(x.status)).length,
     won: db.prospects.filter((x) => x.owner_id === p.id && x.status === 'gagne').length,
   }])), [db])
 
@@ -65,7 +66,7 @@ export function TeamPage() {
                       {fullName(p)}{p.role === 'admin' && <Shield size={13} className="text-copper-ink" aria-label="Administrateur" />}
                       {!p.active && <span className="text-[12px] font-semibold text-faint">· désactivé</span>}
                     </p>
-                    <p className="text-[12.5px] text-muted tabular">{s.prospects} prospects · {s.projects} projets · {s.tasks} tâches · {s.won} gagnés</p>
+                    <p className="text-[12.5px] text-muted tabular">{s.tickets} tickets · {s.prospects} prospects · {s.projects} projets · {s.tasks} tâches · {s.won} gagnés</p>
                   </div>
                   {admin && p.id !== me?.id && <ChevronRight size={18} className="text-faint" />}
                 </button>
@@ -142,7 +143,7 @@ export function TeamPage() {
             )}
             <button className="btn-soft text-danger" onClick={() => backend.signOut()}><LogOut size={17} />Se déconnecter</button>
           </div>
-          <p className="text-[12px] text-faint text-center mt-6">QUADCORE CRM · v1.0 · {backend.mode === 'demo' ? 'mode démonstration' : 'connecté à Supabase'}</p>
+          <p className="text-[12px] text-faint text-center mt-6">QUADCORE · v1.0 · {backend.mode === 'demo' ? 'mode démonstration' : 'connecté à Supabase'}</p>
         </Section>
       </Page>
 
@@ -195,8 +196,10 @@ function InviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
   const [last, setLast] = useState('')
   const [role, setRole] = useState<'member' | 'admin'>('member')
   const [busy, setBusy] = useState(false)
+  const profiles = useStore((s) => s.db.profiles)
   useEffect(() => { if (open) { setEmail(''); setFirst(''); setLast(''); setRole('member') } }, [open])
   const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())
+  const missing = TEAM_ROSTER.filter((r) => !profiles.some((p) => p.first_name === r.first_name && p.last_name === r.last_name))
   return (
     <Sheet open={open} onClose={onClose} title="Inviter un collaborateur" size="sm"
       footer={<button className="btn-primary w-full" disabled={!valid || busy} onClick={async () => {
@@ -206,7 +209,15 @@ function InviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) 
         setBusy(false)
       }}><Mail size={17} />Envoyer l’invitation</button>}>
       <div className="flex flex-col gap-4">
-        <p className="text-[13.5px] text-muted">Un e-mail lui permettra de choisir son mot de passe et d’accéder à QUADCORE CRM.</p>
+        <p className="text-[13.5px] text-muted">Un e-mail lui permettra de choisir son mot de passe et d’accéder à QUADCORE.</p>
+        {missing.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {missing.map((r) => (
+              <button key={r.first_name} type="button" onClick={() => { setFirst(r.first_name); setLast(r.last_name) }}
+                className={cx('chip', first === r.first_name && last === r.last_name && 'chip-on')}>{r.first_name} {r.last_name}</button>
+            ))}
+          </div>
+        )}
         <Field label="E-mail *"><Input type="email" inputMode="email" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom@quad-core.fr" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Prénom"><Input value={first} onChange={(e) => setFirst(e.target.value)} /></Field>

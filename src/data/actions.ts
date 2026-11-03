@@ -1,6 +1,6 @@
 import { backend, deleteRow, insertRow, me, newId, toast, updateRow, useStore } from './store'
 import type {
-  EntityType, Project, ProjectStatus, Prospect, ProspectStatus, Revision, Task, UUID, WorkStatus,
+  Channel, EntityType, Project, ProjectStatus, Prospect, ProspectStatus, Revision, Task, Ticket, TicketStatus, UUID, WorkStatus,
 } from '../lib/types'
 import { normalizeInstagram } from '../lib/links'
 import { todayStr } from '../lib/dates'
@@ -152,9 +152,29 @@ export async function scheduleFollowUp(p: Prospect, date: string, note?: string,
   toast('Relance programmée', 'success')
 }
 
+// ———————————————————————— Tickets ————————————————————————
+export function createTicket(input: Partial<Ticket>) {
+  return insertRow('tickets', {
+    priority: 'normale',
+    type: 'demande',
+    status: 'nouveau',
+    status_changed_at: new Date().toISOString(),
+    ...input,
+    subject: (input.subject ?? '').trim(),
+    created_by: me()?.id ?? null,
+  })
+}
+export const updateTicket = (id: UUID, patch: Partial<Ticket>) => updateRow('tickets', id, patch)
+export const setTicketStatus = (id: UUID, status: TicketStatus) => updateRow('tickets', id, { status })
+export const deleteTicket = (id: UUID) => deleteRow('tickets', id)
+
+/** « Je m'en occupe » : le ticket m'est attribué et passe en cours. */
+export const takeTicket = (t: Ticket) =>
+  updateRow('tickets', t.id, { assignee_id: me()?.id ?? null, status: t.status === 'nouveau' ? 'en_cours' : t.status })
+
 // ———————————————————————— Commentaires & fichiers ————————————————————————
-export const addComment = (entity_type: EntityType, entity_id: UUID, body: string) =>
-  insertRow('comments', { entity_type, entity_id, body: body.trim(), author_id: me()?.id ?? null })
+export const addComment = (entity_type: EntityType, entity_id: UUID, body: string, channel: Channel | null = null) =>
+  insertRow('comments', { entity_type, entity_id, body: body.trim(), author_id: me()?.id ?? null, channel })
 export const deleteComment = (id: UUID) => deleteRow('comments', id)
 
 export async function uploadAttachment(entity_type: EntityType, entity_id: UUID, file: File) {

@@ -10,6 +10,8 @@ import { ProspectDetail } from './features/prospects/ProspectDetail'
 import { ProjectsPage } from './features/projects/ProjectsPage'
 import { ProjectDetail } from './features/projects/ProjectDetail'
 import { TasksPage } from './features/tasks/TasksPage'
+import { TicketsPage } from './features/tickets/TicketsPage'
+import { TicketDetail } from './features/tickets/TicketDetail'
 import { TeamPage } from './features/team/TeamPage'
 import { useReminders } from './features/team/notifications'
 
@@ -48,6 +50,8 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/prospects" element={<ProspectsPage />} />
         <Route path="/prospects/:id" element={<ProspectDetail />} />
+        <Route path="/suivi" element={<TicketsPage />} />
+        <Route path="/suivi/:id" element={<TicketDetail />} />
         <Route path="/projets" element={<ProjectsPage />} />
         <Route path="/projets/:id" element={<ProjectDetail />} />
         <Route path="/taches" element={<TasksPage />} />

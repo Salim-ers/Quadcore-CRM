@@ -10,7 +10,7 @@ import markUrl from '../assets/mark-128.png'
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
 // ———————————————————————— Marque ————————————————————————
-export function Logo({ size = 32, withText = true, sub = 'CRM' }: { size?: number; withText?: boolean; sub?: string }) {
+export function Logo({ size = 32, withText = true }: { size?: number; withText?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5 select-none">
       <img src={markUrl} width={size} height={size} alt="" className="shrink-0" style={{ width: size, height: size }} />
@@ -18,7 +18,6 @@ export function Logo({ size = 32, withText = true, sub = 'CRM' }: { size?: numbe
         <span className="font-display leading-none tracking-[.02em]" style={{ fontSize: size * 0.56 }}>
           <span className="font-semibold">Quad</span>
           <span className="font-semibold text-copper-ink">Core</span>
-          {sub && <span className="ml-1.5 text-[0.62em] font-semibold tracking-[.18em] text-faint align-middle">{sub}</span>}
         </span>
       )}
     </span>

@@ -14,6 +14,7 @@ import { useProjectStatusFlow } from './flows'
 import { ProjectEditSheet } from './ProjectForm'
 import { Revisions } from './Revisions'
 import { Attachments, Timeline } from '../shared/Timeline'
+import { TicketsSection } from '../tickets/TicketsSection'
 import { TaskRow } from '../tasks/TaskRow'
 import { TaskSheet, type TaskDraft } from '../tasks/TaskSheet'
 import { MenuItem } from '../prospects/ProspectDetail'
@@ -104,6 +105,8 @@ export function ProjectDetail() {
 
             {/* ——— Retouches ——— */}
             {showRevisions && <Section title="Retouches"><Revisions project={p} /></Section>}
+
+            <TicketsSection prospectId={p.prospect_id} projectId={p.id} />
 
             {/* ——— Tâches ——— */}
             <Section title="Tâches" action={<button className="btn-ghost h-9 min-h-0 px-3 text-copper-ink" onClick={() => setTaskSheet({ draft: { project_id: p.id, prospect_id: p.prospect_id } })}><Plus size={16} />Ajouter</button>}>

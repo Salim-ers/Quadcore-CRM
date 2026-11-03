@@ -19,6 +19,7 @@ import { ProjectCard } from '../projects/ProjectCard'
 import { TaskRow } from '../tasks/TaskRow'
 import { TaskSheet, type TaskDraft } from '../tasks/TaskSheet'
 import { Attachments, Timeline } from '../shared/Timeline'
+import { TicketsSection } from '../tickets/TicketsSection'
 import type { Task } from '../../lib/types'
 
 export function ProspectDetail() {
@@ -128,6 +129,8 @@ export function ProspectDetail() {
               <ContactActions phone={p.phone} email={p.email} instagramUrl={p.instagram_url} website={p.website_url} onFollowUp={() => flow.scheduleFor(p)} />
             </div>
 
+            <TicketsSection prospectId={p.id} />
+
             {/* ——— Projets ——— */}
             <Section title={`Projets (${projects.length})`}
               action={<button className="btn-ghost h-9 min-h-0 px-3 text-copper-ink" onClick={async () => { const pr = await createProject(projectDraftFrom(p)); if (pr) nav(`/projets/${pr.id}`) }}><FolderPlus size={16} />Créer</button>}>
@@ -193,7 +196,7 @@ export function ProspectDetail() {
               }} />)}
           {admin && <MenuItem danger icon={<Trash2 size={19} />} label="Supprimer définitivement" onClick={async () => {
             setMenu(false)
-            if (await confirmDialog({ title: `Supprimer ${p.name} ?`, message: 'Action irréversible : la fiche, ses tâches et son fil seront supprimés. Les projets liés sont conservés. Préférez l’archivage.', confirm: 'Supprimer', danger: true })) {
+            if (await confirmDialog({ title: `Supprimer ${p.name} ?`, message: 'Action irréversible : la fiche, ses tickets, ses tâches et son fil seront supprimés. Les projets liés sont conservés. Préférez l’archivage.', confirm: 'Supprimer', danger: true })) {
               if (await deleteRow('prospects', p.id)) nav('/prospects')
             }
           }} />}

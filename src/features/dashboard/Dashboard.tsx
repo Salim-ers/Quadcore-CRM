@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowUpRight, CalendarClock, Check, ChevronRight, Hourglass, MessageCircle, PackageCheck, PencilRuler, Phone, RefreshCw, Send, Sparkles, Store, Target, Users, Wrench,
+  AlarmClock, ArrowUpRight, CalendarClock, Check, ChevronRight, Hourglass, MessageCircle, PackageCheck, PencilRuler, Phone, RefreshCw, Send, Sparkles, Store, Target, Ticket, UserRoundX, Users, Wrench,
 } from 'lucide-react'
 import { Page } from '../../components/Shell'
 import { Avatar, Section, cx } from '../../components/ui'
 import { useMe, useStore } from '../../data/store'
 import { toggleTask } from '../../data/actions'
-import { dashboardCounts, todayItems, type TodayItem } from '../../lib/derive'
+import { dashboardCounts, ticketCounts, ticketRef, todayItems, type TodayItem } from '../../lib/derive'
 import { dueLabel, greeting, relTime, todayLong } from '../../lib/dates'
 import { telLink, whatsappLink } from '../../lib/links'
 import { describeActivity, FEED_TYPES } from '../shared/activity'
@@ -20,12 +20,17 @@ export function Dashboard() {
   const [scope, setScope] = useState<'me' | 'team'>('me')
   const [feedLimit, setFeedLimit] = useState(12)
   const c = useMemo(() => dashboardCounts(db), [db])
+  const k = useMemo(() => ticketCounts(db), [db])
   const items = useMemo(() => todayItems(db, scope === 'me' ? userId : null), [db, userId, scope])
   const late = items.filter((i) => 'late' in i && i.late).length
   const feed = useMemo(() => db.activities.filter((a) => FEED_TYPES.has(a.type)), [db.activities])
   const byId = useMemo(() => new Map(db.profiles.map((p) => [p.id, p])), [db.profiles])
 
   const kpis: { label: string; value: number; to: string; icon: React.ReactNode; accent?: boolean; sub?: string }[] = [
+    { label: 'Tickets ouverts', value: k.open, to: '/suivi', icon: <Ticket size={17} /> },
+    { label: 'Tickets en retard', value: k.late, to: '/suivi?v=late', icon: <AlarmClock size={17} />, accent: k.late > 0 },
+    { label: 'Attente client', value: k.waiting, to: '/suivi?v=attente', icon: <Hourglass size={17} /> },
+    { label: 'Sans responsable', value: k.unassigned, to: '/suivi?v=unassigned', icon: <UserRoundX size={17} />, accent: k.unassigned > 0 },
     { label: 'Prospects actifs', value: c.active, to: '/prospects', icon: <Store size={17} /> },
     { label: 'À contacter', value: c.toContact, to: '/prospects?f=a_prospecter', icon: <Target size={17} /> },
     { label: 'À relancer', value: c.toFollowUp, to: '/prospects?f=relance', icon: <RefreshCw size={17} />, accent: c.toFollowUp > 0 },
@@ -103,7 +108,7 @@ export function Dashboard() {
             <ol className="card divide-y divide-line">
               {feed.slice(0, feedLimit).map((a) => {
                 const d = describeActivity(a, a.actor_id ? byId.get(a.actor_id) : undefined)
-                const to = a.project_id ? `/projets/${a.project_id}` : a.prospect_id ? `/prospects/${a.prospect_id}` : null
+                const to = a.ticket_id ? `/suivi/${a.ticket_id}` : a.project_id ? `/projets/${a.project_id}` : a.prospect_id ? `/prospects/${a.prospect_id}` : null
                 const body = (
                   <div className="flex items-start gap-3 px-3.5 py-3">
                     <span className={cx('w-8 h-8 rounded-full flex items-center justify-center shrink-0', d.tone)}>{d.icon}</span>
@@ -127,6 +132,7 @@ export function Dashboard() {
 
 function TodayRow({ item, showOwner }: { item: TodayItem; showOwner: boolean }) {
   const profiles = useStore((s) => s.db.profiles)
+  const clients = useStore((s) => s.db.prospects)
   const owner = (id: string | null) => profiles.find((p) => p.id === id)
   const base = 'card flex items-center gap-3 p-3 min-h-[64px]'
   const meta = (txt: string, late?: boolean) => <span className={cx('text-[12.5px] font-semibold', late ? 'text-danger' : 'text-muted')}>{txt}</span>
@@ -160,6 +166,25 @@ function TodayRow({ item, showOwner }: { item: TodayItem; showOwner: boolean }) 
         {whatsappLink(p.phone) && <a href={whatsappLink(p.phone)!} target="_blank" rel="noopener noreferrer" className="icon-btn w-10 h-10 bg-sunken" aria-label="WhatsApp"><MessageCircle size={17} /></a>}
         {showOwner && <Avatar profile={owner(p.owner_id)} size={24} />}
       </div>
+    )
+  }
+  if (item.kind === 'ticket' || item.kind === 'ticket_wait') {
+    const t = item.ticket
+    const client = clients.find((x) => x.id === t.prospect_id)
+    const sub = item.kind === 'ticket_wait' ? `Sans réponse depuis ${item.days} j`
+      : !t.assignee_id ? 'À prendre en charge' : item.late ? dueLabel(t.due_date) : t.priority === 'urgente' ? 'Urgent' : "Aujourd'hui"
+    return (
+      <Link to={`/suivi/${t.id}`} className={cx(base, 'hover:border-copper/30')}>
+        <span className={cx('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', t.priority === 'urgente' ? 'bg-rose-600/12 text-rose-700 dark:text-rose-300' : 'bg-copper/12 text-copper-ink')}>
+          {item.kind === 'ticket_wait' ? <Hourglass size={17} /> : <Ticket size={17} />}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-[14.5px] truncate">{item.kind === 'ticket_wait' ? `Relancer ${client?.name ?? 'le client'}` : t.subject}</p>
+          {meta(`${ticketRef(t)}${client && item.kind === 'ticket' ? ` · ${client.name}` : ''} · ${sub}`, item.kind === 'ticket' && item.late)}
+        </div>
+        {showOwner && <Avatar profile={owner(t.assignee_id)} size={24} />}
+        <ChevronRight size={18} className="text-faint" />
+      </Link>
     )
   }
   const p = item.project

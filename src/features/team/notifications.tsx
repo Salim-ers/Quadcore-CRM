@@ -49,7 +49,8 @@ function checkNow() {
   const items = todayItems(s.db, s.userId).filter((i) => !seen.includes(i.id))
   if (!items.length) return
   const label = (i: (typeof items)[number]) =>
-    i.kind === 'task' ? i.task.title : i.kind === 'followup' ? `Relancer ${i.prospect.name}` : i.kind === 'revisions' ? `${i.remaining} retouche(s) — ${i.project.name}` : i.kind === 'delivery' ? `Livraison : ${i.project.name}` : `Validation en attente : ${i.project.name}`
+    i.kind === 'task' ? i.task.title : i.kind === 'followup' ? `Relancer ${i.prospect.name}` : i.kind === 'revisions' ? `${i.remaining} retouche(s) — ${i.project.name}` : i.kind === 'delivery' ? `Livraison : ${i.project.name}`
+      : i.kind === 'ticket' ? `Ticket #${i.ticket.number} : ${i.ticket.subject}` : i.kind === 'ticket_wait' ? `Sans réponse du client : ticket #${i.ticket.number}` : `Validation en attente : ${i.project.name}`
   if (items.length === 1) show('QUADCORE — à faire', label(items[0]), items[0].id)
   else show(`QUADCORE — ${items.length} actions aujourd’hui`, items.slice(0, 3).map(label).join(' · '), 'qc-daily')
   try {

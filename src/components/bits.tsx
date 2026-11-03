@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import {
-  Coffee, Croissant, Globe, Hammer, Camera, Mail, MessageCircle, Phone, Scissors, Shapes, ShoppingBag, UtensilsCrossed, BellPlus,
+  Coffee, Croissant, Globe, Hammer, Camera, Mail, MapPin, MessageCircle, MessagesSquare, Phone, Scissors, Shapes, ShoppingBag, UtensilsCrossed, BellPlus,
 } from 'lucide-react'
-import type { Category, Profile, UUID } from '../lib/types'
+import type { Category, Channel, Profile, UUID } from '../lib/types'
 import { mailLink, normalizeUrl, telLink, whatsappLink } from '../lib/links'
 import { useProfiles } from '../data/store'
 import { fullName } from '../lib/derive'
@@ -15,6 +15,14 @@ const CAT_ICONS: Record<Category, typeof Coffee> = {
 }
 export function CategoryIcon({ category, size = 18 }: { category: Category | null; size?: number }) {
   const I = CAT_ICONS[category ?? 'autre']
+  return <I size={size} strokeWidth={1.9} />
+}
+
+const CHANNEL_ICONS: Record<Channel, typeof Phone> = {
+  telephone: Phone, whatsapp: MessageCircle, email: Mail, instagram: Camera, sur_place: MapPin, autre: MessagesSquare,
+}
+export function ChannelIcon({ channel, size = 15 }: { channel: Channel; size?: number }) {
+  const I = CHANNEL_ICONS[channel]
   return <I size={size} strokeWidth={1.9} />
 }
 

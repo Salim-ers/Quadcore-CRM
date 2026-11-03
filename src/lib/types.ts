@@ -36,7 +36,12 @@ export type Priority = 'basse' | 'normale' | 'haute'
 export type ProjectType = 'vitrine' | 'ecommerce' | 'click_collect' | 'application' | 'autre'
 export type BillingStatus = 'non_facture' | 'devis_envoye' | 'acompte_recu' | 'facture' | 'paye'
 export type WorkStatus = 'a_faire' | 'en_cours' | 'termine'
-export type EntityType = 'prospect' | 'project' | 'revision' | 'task'
+export type EntityType = 'prospect' | 'project' | 'revision' | 'task' | 'ticket'
+
+export type TicketStatus = 'nouveau' | 'en_cours' | 'attente_client' | 'resolu' | 'ferme'
+export type TicketPriority = 'basse' | 'normale' | 'haute' | 'urgente'
+export type TicketType = 'demande' | 'incident' | 'question' | 'facturation' | 'autre'
+export type Channel = 'telephone' | 'whatsapp' | 'email' | 'instagram' | 'sur_place' | 'autre'
 
 export interface Profile {
   id: UUID
@@ -135,12 +140,34 @@ export interface Task {
   updated_at: ISODateTime
 }
 
+export interface Ticket {
+  id: UUID
+  number: number
+  prospect_id: UUID
+  project_id: UUID | null
+  subject: string
+  description: string | null
+  type: TicketType
+  channel: Channel | null
+  priority: TicketPriority
+  status: TicketStatus
+  assignee_id: UUID | null
+  due_date: ISODate | null
+  status_changed_at: ISODateTime
+  resolved_at: ISODateTime | null
+  created_by: UUID | null
+  created_at: ISODateTime
+  updated_at: ISODateTime
+}
+
 export interface Comment {
   id: UUID
   entity_type: EntityType
   entity_id: UUID
   author_id: UUID | null
   body: string
+  /** Renseigné = échange avec le client ; null = note interne */
+  channel: Channel | null
   created_at: ISODateTime
 }
 
@@ -158,7 +185,7 @@ export interface Attachment {
 
 export interface StatusChange {
   id: UUID
-  entity_type: 'prospect' | 'project'
+  entity_type: 'prospect' | 'project' | 'ticket'
   entity_id: UUID
   from_status: string | null
   to_status: string
@@ -184,6 +211,12 @@ export type ActivityType =
   | 'task_done'
   | 'comment_added'
   | 'file_added'
+  | 'ticket_opened'
+  | 'ticket_status'
+  | 'ticket_assigned'
+  | 'ticket_resolved'
+  | 'ticket_reopened'
+  | 'contact_logged'
 
 export interface Activity {
   id: UUID
@@ -191,6 +224,7 @@ export interface Activity {
   actor_id: UUID | null
   prospect_id: UUID | null
   project_id: UUID | null
+  ticket_id: UUID | null
   meta: Record<string, unknown>
   created_at: ISODateTime
 }
@@ -201,6 +235,7 @@ export interface DB {
   projects: Project[]
   revisions: Revision[]
   tasks: Task[]
+  tickets: Ticket[]
   comments: Comment[]
   attachments: Attachment[]
   status_history: StatusChange[]

@@ -1,24 +1,33 @@
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { CheckSquare, ChevronLeft, FolderKanban, Home, Plus, Store, Users, WifiOff } from 'lucide-react'
+import { CheckSquare, ChevronLeft, FolderKanban, Home, Plus, Store, Ticket, Users, WifiOff } from 'lucide-react'
 import { create } from 'zustand'
 import { useMe, useStore, backend } from '../data/store'
 import { todayStr } from '../lib/dates'
 import { Avatar, Logo, cx } from './ui'
 import { QuickAddProspect } from '../features/prospects/QuickAddProspect'
-import { fullName } from '../lib/derive'
+import { TicketSheet, type TicketDraft } from '../features/tickets/TicketSheet'
+import { fullName, isTicketOpen, liveTickets } from '../lib/derive'
 
-export const useUi = create<{ quickAdd: boolean; setQuickAdd: (v: boolean) => void }>((set) => ({
+export const useUi = create<{
+  quickAdd: boolean; setQuickAdd: (v: boolean) => void
+  ticketDraft: TicketDraft | null; newTicket: (draft?: TicketDraft) => void; closeTicket: () => void
+}>((set) => ({
   quickAdd: false,
   setQuickAdd: (quickAdd) => set({ quickAdd }),
+  ticketDraft: null,
+  newTicket: (draft = {}) => set({ ticketDraft: draft }),
+  closeTicket: () => set({ ticketDraft: null }),
 }))
 
+// Sur mobile, l'équipe s'ouvre depuis l'avatar de l'accueil : la barre garde cinq entrées
 const NAV = [
   { to: '/', label: 'Accueil', icon: Home, end: true },
   { to: '/prospects', label: 'Prospects', icon: Store },
+  { to: '/suivi', label: 'Suivi', icon: Ticket },
   { to: '/projets', label: 'Projets', icon: FolderKanban },
   { to: '/taches', label: 'Tâches', icon: CheckSquare },
-  { to: '/equipe', label: 'Équipe', icon: Users },
+  { to: '/equipe', label: 'Équipe', icon: Users, desktopOnly: true },
 ]
 
 function useTaskBadge() {
@@ -28,42 +37,65 @@ function useTaskBadge() {
   })
 }
 
+/** Tickets à prendre, ou les miens arrivés à échéance */
+function useTicketBadge() {
+  return useStore((s) => {
+    const t = todayStr()
+    return liveTickets(s.db).filter((x) => isTicketOpen(x) && x.status !== 'attente_client' &&
+      (!x.assignee_id || (x.assignee_id === s.userId && !!x.due_date && x.due_date <= t))).length
+  })
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const setQuickAdd = useUi((s) => s.setQuickAdd)
   const quickAdd = useUi((s) => s.quickAdd)
+  const ticketDraft = useUi((s) => s.ticketDraft)
+  const newTicket = useUi((s) => s.newTicket)
+  const closeTicket = useUi((s) => s.closeTicket)
   const online = useStore((s) => s.online)
-  const badge = useTaskBadge()
+  const taskBadge = useTaskBadge()
+  const ticketBadge = useTicketBadge()
+  const badgeOf = (to: string) => (to === '/taches' ? taskBadge : to === '/suivi' ? ticketBadge : 0)
   const me = useMe()
   const loc = useLocation()
   const nav = useNavigate()
+  const onSuivi = loc.pathname.startsWith('/suivi')
 
-  // raccourci PWA « Ajouter un prospect » (?new=1)
+  // raccourcis PWA « Ajouter un prospect » et « Nouveau ticket » (?new=1)
   useEffect(() => {
     const q = new URLSearchParams(loc.search)
-    if (q.get('new') === '1') { setQuickAdd(true); nav(loc.pathname, { replace: true }) }
-  }, [loc.search, loc.pathname, nav, setQuickAdd])
+    if (q.get('new') === '1') {
+      if (loc.pathname.startsWith('/suivi')) newTicket()
+      else setQuickAdd(true)
+      nav(loc.pathname, { replace: true })
+    }
+  }, [loc.search, loc.pathname, nav, setQuickAdd, newTicket])
 
-  // raccourci clavier desktop : N = nouveau prospect
+  // raccourcis clavier desktop : N = nouveau prospect, T = nouveau ticket
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
-      if (e.key.toLowerCase() === 'n' && !e.metaKey && !e.ctrlKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) && !document.querySelector('[role=dialog]')) {
-        e.preventDefault(); setQuickAdd(true)
-      }
+      if (e.metaKey || e.ctrlKey || ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || document.querySelector('[role=dialog]')) return
+      const key = e.key.toLowerCase()
+      if (key === 'n') { e.preventDefault(); setQuickAdd(true) }
+      if (key === 't') { e.preventDefault(); newTicket() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [setQuickAdd])
+  }, [setQuickAdd, newTicket])
 
-  const isDetail = /^\/(prospects|projets)\/[^/]+/.test(loc.pathname)
+  const isDetail = /^\/(prospects|projets|suivi)\/[^/]+/.test(loc.pathname)
 
   return (
     <div className="min-h-[100dvh] lg:flex">
       {/* ——— Barre latérale (ordinateur) ——— */}
       <aside className="hidden lg:flex flex-col w-[248px] shrink-0 h-screen sticky top-0 border-r border-line bg-surface/60 px-4 py-5">
         <div className="px-2 mb-7"><Logo size={30} /></div>
-        <button className="btn-primary w-full mb-5 whitespace-nowrap justify-start px-3.5 text-[14.5px]" onClick={() => setQuickAdd(true)}>
+        <button className="btn-primary w-full mb-2 whitespace-nowrap justify-start px-3.5 text-[14.5px]" onClick={() => setQuickAdd(true)}>
           <Plus size={18} /> Nouveau prospect <kbd className="ml-auto text-[11px] opacity-70 font-sans border border-current/30 rounded px-1.5">N</kbd>
+        </button>
+        <button className="btn-soft w-full mb-5 whitespace-nowrap justify-start px-3.5 text-[14.5px]" onClick={() => newTicket()}>
+          <Ticket size={18} /> Nouveau ticket <kbd className="ml-auto text-[11px] opacity-70 font-sans border border-current/30 rounded px-1.5">T</kbd>
         </button>
         <nav className="flex flex-col gap-0.5">
           {NAV.map(({ to, label, icon: Icon, end }) => (
@@ -72,7 +104,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 isActive ? 'bg-ink text-bg' : 'text-muted hover:bg-sunken hover:text-ink')}>
               <Icon size={19} strokeWidth={2} />
               <span className="flex-1">{label}</span>
-              {to === '/taches' && badge > 0 && <span className="tabular text-[12px] font-bold min-w-[22px] h-[22px] px-1.5 rounded-full bg-copper text-onCopper flex items-center justify-center">{badge}</span>}
+              {badgeOf(to) > 0 && <span className="tabular text-[12px] font-bold min-w-[22px] h-[22px] px-1.5 rounded-full bg-copper text-onCopper flex items-center justify-center">{badgeOf(to)}</span>}
             </NavLink>
           ))}
         </nav>
@@ -89,7 +121,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {backend.mode === 'demo' && <DemoRibbon />}
         {!online && (
           <div className="sticky top-0 z-40 bg-ink text-bg text-[13px] font-semibold flex items-center justify-center gap-2 py-2 pt-[max(var(--safe-top),8px)]">
-            <WifiOff size={15} /> Hors ligne — les modifications reprendront au retour du réseau
+            <WifiOff size={15} /> Hors ligne — rien ne sera enregistré avant le retour du réseau
           </div>
         )}
         <main className="pb-nav">{children}</main>
@@ -98,8 +130,8 @@ export function Shell({ children }: { children: ReactNode }) {
       {/* ——— Bouton flottant (mobile) ——— */}
       {!isDetail && (
         <button
-          onClick={() => setQuickAdd(true)}
-          aria-label="Ajouter un prospect"
+          onClick={() => (onSuivi ? newTicket() : setQuickAdd(true))}
+          aria-label={onSuivi ? 'Nouveau ticket' : 'Ajouter un prospect'}
           className="lg:hidden fixed z-30 right-4 bottom-[calc(var(--nav-h)+var(--safe-bottom)+16px)] w-14 h-14 rounded-2xl bg-copper text-onCopper shadow-float flex items-center justify-center active:scale-95 transition"
         >
           <Plus size={26} strokeWidth={2.4} />
@@ -109,7 +141,7 @@ export function Shell({ children }: { children: ReactNode }) {
       {/* ——— Navigation inférieure (mobile) ——— */}
       <nav className="lg:hidden fixed z-30 bottom-0 inset-x-0 bg-surface/92 backdrop-blur-xl border-t border-line pb-safe">
         <div className="grid grid-cols-5 h-[var(--nav-h)]">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+          {NAV.filter((n) => !n.desktopOnly).map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end}
               className={({ isActive }) => cx('relative flex flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors', isActive ? 'text-ink' : 'text-faint')}>
               {({ isActive }) => (
@@ -118,8 +150,8 @@ export function Shell({ children }: { children: ReactNode }) {
                     <Icon size={21} strokeWidth={isActive ? 2.3 : 1.9} />
                   </span>
                   {label}
-                  {to === '/taches' && badge > 0 && (
-                    <span className="absolute top-1.5 left-1/2 ml-2 tabular text-[10.5px] font-bold min-w-[18px] h-[18px] px-1 rounded-full bg-copper text-onCopper flex items-center justify-center">{badge}</span>
+                  {badgeOf(to) > 0 && (
+                    <span className="absolute top-1.5 left-1/2 ml-2 tabular text-[10.5px] font-bold min-w-[18px] h-[18px] px-1 rounded-full bg-copper text-onCopper flex items-center justify-center">{badgeOf(to)}</span>
                   )}
                 </>
               )}
@@ -129,6 +161,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </nav>
 
       <QuickAddProspect open={quickAdd} onClose={() => setQuickAdd(false)} />
+      <TicketSheet open={!!ticketDraft} onClose={closeTicket} draft={ticketDraft} onCreated={(t) => nav(`/suivi/${t.id}`)} />
     </div>
   )
 }

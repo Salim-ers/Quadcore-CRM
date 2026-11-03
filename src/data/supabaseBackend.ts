@@ -3,8 +3,10 @@ import type { Backend, ChangeListener } from './backend'
 import type { DB, Row, TableName, UUID } from '../lib/types'
 
 const TABLES: TableName[] = [
-  'profiles', 'prospects', 'projects', 'revisions', 'tasks', 'comments', 'attachments', 'status_history', 'activities',
+  'profiles', 'prospects', 'projects', 'revisions', 'tasks', 'tickets', 'comments', 'attachments', 'status_history', 'activities',
 ]
+// Supabase renvoie au plus 1000 lignes par requête : au-delà, le reste serait masqué sans erreur
+const PAGE_SIZE = 1000
 
 // Capturé avant que supabase-js ne nettoie l'URL : arrivée par invitation ou « mot de passe oublié »
 const arrivedForPassword =
@@ -16,6 +18,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     realtime: { params: { eventsPerSecond: 10 } },
   })
   let mustSetPassword = arrivedForPassword
+  let channelSeq = 0
 
   const fail = (e: { message: string } | null) => {
     if (e) throw new Error(translate(e.message))
@@ -31,7 +34,8 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     onAuthChange(cb) {
       const { data } = sb.auth.onAuthStateChange((event, session) => {
         if (event === 'PASSWORD_RECOVERY') mustSetPassword = true
-        cb(session?.user.id ?? null)
+        // Différé : appeler Supabase depuis ce rappel peut bloquer le client (recommandation de supabase-js)
+        setTimeout(() => cb(session?.user.id ?? null), 0)
       })
       return () => data.subscription.unsubscribe()
     },
@@ -54,17 +58,19 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     needsPasswordSetup: () => mustSetPassword,
 
     async loadAll() {
-      const results = await Promise.all(
-        TABLES.map((t) => {
-          let q = sb.from(t).select('*')
-          if (t === 'activities' || t === 'status_history') q = q.order('created_at', { ascending: false }).limit(1000)
-          return q
-        }),
-      )
+      const fetchAll = async (t: TableName) => {
+        const rows: unknown[] = []
+        for (let from = 0; ; from += PAGE_SIZE) {
+          const { data, error } = await sb.from(t).select('*').order('id').range(from, from + PAGE_SIZE - 1)
+          fail(error)
+          rows.push(...(data ?? []))
+          if ((data ?? []).length < PAGE_SIZE) return rows
+        }
+      }
+      const results = await Promise.all(TABLES.map(fetchAll))
       const db = {} as DB
-      results.forEach((r, i) => {
-        fail(r.error)
-        ;(db as unknown as Record<string, unknown[]>)[TABLES[i]] = r.data ?? []
+      results.forEach((rows, i) => {
+        ;(db as unknown as Record<string, unknown[]>)[TABLES[i]] = rows
       })
       return db
     },
@@ -87,8 +93,9 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
     },
 
     subscribe(cb: ChangeListener) {
+      // Nom unique : supabase-js réutilise un canal de même nom, et refuse d'y ajouter un écouteur une fois abonné
       const channel = sb
-        .channel('quadcore-db')
+        .channel(`quadcore-db-${++channelSeq}`)
         .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
           const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown>
           cb(payload.table as TableName, payload.eventType, row)
@@ -128,6 +135,7 @@ function translate(msg: string) {
   if (/Email not confirmed/i.test(msg)) return "Votre adresse e-mail n'est pas encore confirmée."
   if (/rate limit/i.test(msg)) return 'Trop de tentatives, réessayez dans quelques minutes.'
   if (/Password should be/i.test(msg)) return 'Le mot de passe doit contenir au moins 8 caractères.'
+  if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return 'Connexion impossible : rien n’a été enregistré. Vérifiez le réseau et réessayez.'
   return msg
 }
 

@@ -4,3 +4,4 @@ dist-demo
 .env.local
 .env
 *.tsbuildinfo
+supabase/.temp
