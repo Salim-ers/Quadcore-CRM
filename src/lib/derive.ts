@@ -4,6 +4,8 @@ import { addDaysStr, endOfWeekStr, todayStr } from './dates'
 
 export const liveProjects = (db: DB) => db.projects.filter((p) => !p.archived)
 
+const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
 export const needsFollowUp = (p: Prospect, today = todayStr()) =>
   !p.archived && !PROSPECT_CLOSED.includes(p.status) && (p.status === 'a_relancer' || (!!p.next_follow_up && p.next_follow_up <= today))
 
@@ -21,6 +23,32 @@ export function prospectsWithSite(db: Pick<DB, 'projects' | 'prospects'>) {
   for (const s of db.projects) if (!s.archived && s.prospect_id) ids.add(s.prospect_id)
   for (const p of db.prospects) if (p.website_url) ids.add(p.id)
   return ids
+}
+
+export const NO_CITY = '-'
+
+/** La même ville malgré les accents, les tirets ou le code postal : « St-Leu 60 » et « saint leu ». */
+export function cityKey(city: string | null | undefined) {
+  const words = plain(city ?? '').replace(/[^a-z]+/g, ' ').trim()
+  return words.replace(/\bste\b/g, 'sainte').replace(/\bst\b/g, 'saint') || NO_CITY
+}
+
+/** Les villes de ces fiches, de A à Z, écrites comme le plus souvent. Les fiches sans ville viennent en dernier. */
+export function cityOptions(prospects: Pick<Prospect, 'city'>[]) {
+  const cities = new Map<string, { count: number; spellings: Map<string, number> }>()
+  for (const { city } of prospects) {
+    const key = cityKey(city)
+    const entry = cities.get(key) ?? { count: 0, spellings: new Map<string, number>() }
+    const spelling = (city ?? '').trim()
+    entry.count++
+    entry.spellings.set(spelling, (entry.spellings.get(spelling) ?? 0) + 1)
+    cities.set(key, entry)
+  }
+  const options = [...cities].map(([key, { count, spellings }]) => {
+    const [label] = [...spellings].sort((a, b) => b[1] - a[1])[0]
+    return { key, count, label: key === NO_CITY ? 'Sans ville' : label[0].toUpperCase() + label.slice(1) }
+  })
+  return options.sort((a, b) => Number(a.key === NO_CITY) - Number(b.key === NO_CITY) || a.label.localeCompare(b.label, 'fr'))
 }
 
 /** Réel : les clients acceptés, au prix accepté s'il existe. Prévisionnel : les autres prix proposés. Un refus ne compte plus. */
@@ -220,7 +248,6 @@ export const initials = (p?: { first_name: string; last_name: string } | null) =
 
 export function searchMatch(q: string, ...fields: (string | null | undefined)[]) {
   if (!q) return true
-  const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  const n = norm(q.trim())
-  return fields.some((f) => f && norm(f).includes(n))
+  const n = plain(q.trim())
+  return fields.some((f) => f && plain(f).includes(n))
 }
