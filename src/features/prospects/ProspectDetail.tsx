@@ -101,7 +101,7 @@ export function ProspectDetail() {
             </div>
             <StepSwitch label="Étape" value={step} onChange={(v) => flow.moveTo(p, v)} options={PROSPECT_STEPS} />
             {step === 'refuse' && p.lost_reason && <p className="text-[13.5px] text-muted mt-3">Motif : {p.lost_reason}</p>}
-            {p.next_follow_up && step === 'vu' && (
+            {p.next_follow_up && (step === 'vu' || step === 'attente') && (
               <div className="mt-3 flex items-center justify-between text-[13.5px]">
                 <span className="text-muted">Prochaine relance</span><DueChip date={p.next_follow_up} />
               </div>
@@ -114,7 +114,7 @@ export function ProspectDetail() {
 
           {projects.map((pr) => <ProjectCard key={pr.id} project={pr} hideClient />)}
           {step === 'accepte' && projects.length === 0 && (
-            <button className="btn-primary h-12" onClick={startSite}><FolderPlus size={18} />Lancer le site</button>
+            <button className="btn-primary h-12" onClick={startSite}><FolderPlus size={18} />Ajouter le site</button>
           )}
 
           {p.notes && (
@@ -153,7 +153,7 @@ export function ProspectDetail() {
       <Sheet open={menu} onClose={() => setMenu(false)} title={p.name} size="sm">
         <div className="flex flex-col gap-1 -mx-2">
           <MenuItem icon={<Pencil size={19} />} label="Modifier la fiche" onClick={() => { setMenu(false); setEdit(true) }} />
-          <MenuItem icon={<FolderPlus size={19} />} label="Lancer un site pour ce client" onClick={() => { setMenu(false); startSite() }} />
+          <MenuItem icon={<FolderPlus size={19} />} label="Ajouter un site pour ce client" onClick={() => { setMenu(false); startSite() }} />
           {admin && (p.archived
             ? <MenuItem icon={<ArchiveRestore size={19} />} label="Restaurer la fiche" onClick={() => { setMenu(false); archive('prospects', p.id, false) }} />
             : <MenuItem icon={<Archive size={19} />} label="Archiver la fiche" hint="Masquée des listes, conservée dans Équipe › Archives" onClick={async () => {

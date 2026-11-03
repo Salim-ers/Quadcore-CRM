@@ -26,7 +26,7 @@ interface StatusDef<S> { value: S; label: string; short?: string; tone: Tone }
 export const PROSPECT_STATUSES: StatusDef<ProspectStatus>[] = [
   { value: 'a_prospecter', label: 'Prospect', tone: 'copper' },
   { value: 'contacte', label: 'Client vu', tone: 'sky' },
-  { value: 'en_attente', label: 'Client vu', tone: 'sky' },
+  { value: 'en_attente', label: 'En attente', tone: 'amber' },
   { value: 'a_relancer', label: 'À relancer', tone: 'orange' },
   { value: 'interesse', label: 'Client vu', tone: 'sky' },
   { value: 'demo_proposee', label: 'Client vu', tone: 'sky' },
@@ -53,21 +53,23 @@ export const PROJECT_STATUSES: StatusDef<ProjectStatus>[] = [
 export const PROSPECT_CLOSED: ProspectStatus[] = ['gagne', 'perdu']
 export const PROJECT_DONE: ProjectStatus[] = ['livre', 'maintenance', 'demo_refusee']
 
-// ———————————————————————— Le parcours : Prospect → Client vu → Accepté ou Refusé → Site en cours → Site livré ————————
-export type ProspectStep = 'prospect' | 'vu' | 'accepte' | 'refuse'
+// ———————————————————————— Le parcours : Prospect → Client vu → En attente, Accepté ou Refusé ————————
+export type ProspectStep = 'prospect' | 'vu' | 'attente' | 'accepte' | 'refuse'
 export const PROSPECT_STEPS: { value: ProspectStep; label: string; plural: string; tone: Tone; status: ProspectStatus }[] = [
   { value: 'prospect', label: 'Prospect', plural: 'Prospects', tone: 'copper', status: 'a_prospecter' },
   { value: 'vu', label: 'Client vu', plural: 'Clients vus', tone: 'sky', status: 'contacte' },
+  { value: 'attente', label: 'En attente', plural: 'En attente', tone: 'amber', status: 'en_attente' },
   { value: 'accepte', label: 'Accepté', plural: 'Acceptés', tone: 'green', status: 'gagne' },
   { value: 'refuse', label: 'Refusé', plural: 'Refusés', tone: 'rose', status: 'perdu' },
 ]
 export const prospectStep = (s: ProspectStatus): ProspectStep =>
-  s === 'a_prospecter' ? 'prospect' : s === 'gagne' ? 'accepte' : s === 'perdu' ? 'refuse' : 'vu'
+  s === 'a_prospecter' ? 'prospect' : s === 'en_attente' ? 'attente' : s === 'gagne' ? 'accepte' : s === 'perdu' ? 'refuse' : 'vu'
 
+// Un site ajouté est livré d'office : on le passe en cours à la main. Les livrés s'affichent en premier.
 export type SiteStep = 'en_cours' | 'livre'
 export const SITE_STEPS: { value: SiteStep; label: string; plural: string; tone: Tone; status: ProjectStatus }[] = [
-  { value: 'en_cours', label: 'Site en cours', plural: 'Sites en cours', tone: 'amber', status: 'dev_final' },
   { value: 'livre', label: 'Site livré', plural: 'Sites livrés', tone: 'green', status: 'livre' },
+  { value: 'en_cours', label: 'Site en cours', plural: 'Sites en cours', tone: 'amber', status: 'dev_final' },
 ]
 export const siteStep = (s: ProjectStatus): SiteStep => (s === 'livre' || s === 'maintenance' ? 'livre' : 'en_cours')
 

@@ -20,7 +20,7 @@ export function describeActivity(a: Activity, actor?: Profile, withSubject = tru
     case 'prospect_won': return { icon: <Trophy size={15} />, tone: 'bg-emerald-600/12 text-emerald-800 dark:text-emerald-300', text: <>{name ?? 'Le client'} a accepté <span className="text-muted">· {actor?.first_name}</span></> }
     case 'prospect_lost': return { icon: <XCircle size={15} />, tone: 'bg-rose-600/12 text-rose-800 dark:text-rose-300', text: <>{name ?? 'Le client'} a refusé{m.reason ? <span className="text-muted"> — {m.reason}</span> : null}</> }
     case 'prospect_status': return { icon: <ArrowRight size={15} />, tone: 'bg-sunken text-muted', text: <>{who} a passé {name ?? 'le prospect'} en <b className="font-semibold">{pStatus(m.to)}</b></> }
-    case 'project_created': return { icon: <FolderPlus size={15} />, tone: 'bg-copper/12 text-copper-ink', text: <>{who} a lancé {name ?? 'le site'}</> }
+    case 'project_created': return { icon: <FolderPlus size={15} />, tone: 'bg-copper/12 text-copper-ink', text: <>{who} a ajouté {name ?? 'le site'}</> }
     case 'demo_sent': return { icon: <Send size={15} />, tone: 'bg-copper/12 text-copper-ink', text: <>{who} a envoyé la démo{name ? <> — {name}</> : null}</> }
     case 'revision_requested': {
       const c = Number(m.count ?? 1)

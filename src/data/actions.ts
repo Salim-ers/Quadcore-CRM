@@ -10,7 +10,7 @@ const db = () => useStore.getState().db
 // ———————————————————————— Prospects ————————————————————————
 export async function createProspect(input: Partial<Prospect>) {
   const ig = normalizeInstagram(input.instagram_handle ?? input.instagram_url ?? null)
-  return insertRow('prospects', {
+  const row = await insertRow('prospects', {
     owner_id: me()?.id ?? null,
     priority: 'normale',
     status: 'a_prospecter',
@@ -21,6 +21,9 @@ export async function createProspect(input: Partial<Prospect>) {
     instagram_url: ig.url,
     created_by: me()?.id ?? null,
   })
+  // Un lien, c'est un site déjà prêt : il arrive tout de suite dans les sites livrés
+  if (row?.website_url) await createProject(projectDraftFrom(row))
+  return row
 }
 
 export function updateProspect(id: UUID, patch: Partial<Prospect>) {
@@ -42,7 +45,7 @@ export async function createProject(input: Partial<Project>) {
   return insertRow('projects', {
     owner_id: me()?.id ?? null,
     type: 'vitrine',
-    status: 'dev_final',
+    status: 'livre',
     billing_status: 'non_facture',
     revision_round: 1,
     archived: false,
@@ -53,7 +56,7 @@ export async function createProject(input: Partial<Project>) {
   })
 }
 
-/** Pré-remplit un projet à partir d'une fiche prospect (proposé quand le prospect est gagné). */
+/** Pré-remplit un site à partir d'une fiche prospect. */
 export function projectDraftFrom(p: Prospect): Partial<Project> {
   const service = (p.service ?? '').toLowerCase()
   const type: Project['type'] = service.includes('e-commerce') ? 'ecommerce' : service.includes('click') ? 'click_collect' : service.includes('outil') ? 'application' : 'vitrine'
@@ -141,7 +144,7 @@ export async function toggleTask(task: Task) {
 
 /** Programme une relance : date sur la fiche + tâche de relance assignée. */
 export async function scheduleFollowUp(p: Prospect, date: string, note?: string, assignee?: UUID | null) {
-  await updateRow('prospects', p.id, { next_follow_up: date, ...(p.status === 'contacte' || p.status === 'en_attente' ? { status: 'a_relancer' as const } : {}) })
+  await updateRow('prospects', p.id, { next_follow_up: date, ...(p.status === 'contacte' ? { status: 'a_relancer' as const } : {}) })
   await createTask({
     title: `Relancer ${p.name}`,
     description: note || null,

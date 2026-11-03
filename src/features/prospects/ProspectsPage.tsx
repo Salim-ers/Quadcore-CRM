@@ -11,8 +11,9 @@ import { searchMatch } from '../../lib/derive'
 
 const EMPTY: Record<ProspectStep, { title: string; text: string }> = {
   prospect: { title: 'Aucun prospect à voir', text: 'Ajoutez un commerce repéré sur Instagram ou Google : seul le nom suffit.' },
-  vu: { title: 'Aucun client vu en attente', text: 'Touchez « Client vu » sur un prospect dès que vous l’avez rencontré.' },
-  accepte: { title: 'Pas encore d’acceptation', text: 'Quand un client accepte, son site se lance tout seul.' },
+  vu: { title: 'Aucun client vu', text: 'Touchez « Client vu » sur un prospect dès que vous l’avez rencontré.' },
+  attente: { title: 'Personne en attente', text: 'Touchez « En attente » quand un client doit encore réfléchir.' },
+  accepte: { title: 'Pas encore d’acceptation', text: 'Quand un client accepte, son site arrive dans les sites livrés.' },
   refuse: { title: 'Aucun refus', text: 'C’est bon signe.' },
 }
 
@@ -28,7 +29,7 @@ export function ProspectsPage() {
 
   const found = useMemo(() => prospects.filter((p) => !p.archived && searchMatch(q, p.name, p.city, p.contact_name, p.instagram_handle, p.phone, p.email, p.notes, p.website_url)), [prospects, q])
   const counts = useMemo(() => {
-    const c: Record<ProspectStep, number> = { prospect: 0, vu: 0, accepte: 0, refuse: 0 }
+    const c: Record<ProspectStep, number> = { prospect: 0, vu: 0, attente: 0, accepte: 0, refuse: 0 }
     for (const p of found) c[prospectStep(p.status)]++
     return c
   }, [found])

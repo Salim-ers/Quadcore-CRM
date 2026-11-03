@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, ExternalLink, PencilRuler, Store, TriangleAlert } from 'lucide-react'
+import { Check, ExternalLink, PencilRuler, RotateCcw, Store, TriangleAlert } from 'lucide-react'
 import type { Project } from '../../lib/types'
 import { siteStep } from '../../lib/constants'
 import { useStore } from '../../data/store'
@@ -11,7 +11,7 @@ import { isTicketOpen } from '../../lib/derive'
 import { normalizeUrl } from '../../lib/links'
 import { moveSite } from './flows'
 
-/** Carte d'un site : en cours, le bouton le marque livré ; livré, le lien l'ouvre. */
+/** Carte d'un site : un bouton pour changer d'étape, le lien pour l'ouvrir. */
 export const ProjectCard = memo(function ProjectCard({ project, hideClient }: { project: Project; hideClient?: boolean }) {
   const step = siteStep(project.status)
   const owner = useStore((s) => s.db.profiles.find((p) => p.id === project.owner_id))
@@ -29,7 +29,7 @@ export const ProjectCard = memo(function ProjectCard({ project, hideClient }: { 
           <p className="font-bold text-[16px] truncate">{project.name}</p>
           {!hideClient && client && <p className="text-[13px] text-muted mt-0.5 flex items-center gap-1.5"><Store size={13} className="shrink-0" /><span className="truncate">{client.name}</span></p>}
           <div className="flex items-center gap-3 mt-1 flex-wrap empty:hidden">
-            {step === 'en_cours' && <DueChip date={project.due_date} />}
+            {step === 'livre' ? <Badge tone="green">Livré</Badge> : <><Badge tone="amber">En cours</Badge><DueChip date={project.due_date} /></>}
             {pending > 0 && <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-orange-700 dark:text-orange-300"><PencilRuler size={13} />{pending} retouche{pending > 1 ? 's' : ''}</span>}
             {problems > 0 && <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-danger"><TriangleAlert size={13} />{problems} problème{problems > 1 ? 's' : ''}</span>}
           </div>
@@ -37,12 +37,10 @@ export const ProjectCard = memo(function ProjectCard({ project, hideClient }: { 
         {owner && <Avatar profile={owner} size={28} />}
       </div>
       <div className="flex items-center gap-2 mt-3">
-        {step === 'en_cours' ? (
-          <button type="button" onClick={() => moveSite(project, 'livre')}
-            className="relative z-10 flex-1 h-11 rounded-xl bg-sunken hover:bg-line/60 text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 transition active:scale-[.98]">
-            <Check size={17} />Site livré
-          </button>
-        ) : <Badge tone="green">Livré</Badge>}
+        <button type="button" onClick={() => moveSite(project, step === 'en_cours' ? 'livre' : 'en_cours')}
+          className="relative z-10 flex-1 min-w-0 h-11 rounded-xl bg-sunken hover:bg-line/60 text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition active:scale-[.98]">
+          {step === 'en_cours' ? <><Check size={17} />Site livré</> : <><RotateCcw size={15} />Passer en cours</>}
+        </button>
         <div className="flex items-center gap-2 ml-auto">
           {url && (
             <a href={url} target="_blank" rel="noopener noreferrer" className="relative z-10 h-11 px-3 rounded-xl bg-sunken hover:bg-line/60 text-[14px] font-semibold inline-flex items-center gap-1.5 transition">

@@ -6,6 +6,7 @@ import { OwnerButton } from '../../components/bits'
 import { BILLING, PROJECT_TYPES } from '../../lib/constants'
 import type { Project, ProjectType, UUID } from '../../lib/types'
 import { createProject, projectDraftFrom, updateProject } from '../../data/actions'
+import { normalizeUrl } from '../../lib/links'
 import { useStore } from '../../data/store'
 
 export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; onClose: () => void; prospectId?: UUID }) {
@@ -13,6 +14,7 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
   const nav = useNavigate()
   const [client, setClient] = useState<string>('')
   const [name, setName] = useState('')
+  const [link, setLink] = useState('')
   const [touched, setTouched] = useState(false)
 
   const sorted = useMemo(() => prospects.filter((p) => !p.archived).sort((a, b) =>
@@ -20,7 +22,7 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
 
   useEffect(() => {
     if (!open) return
-    setClient(prospectId ?? ''); setName(''); setTouched(false)
+    setClient(prospectId ?? ''); setName(''); setLink(''); setTouched(false)
   }, [open, prospectId])
 
   useEffect(() => {
@@ -32,13 +34,13 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
   async function save() {
     const p = prospects.find((x) => x.id === client)
     const base = p ? projectDraftFrom(p) : {}
-    const pr = await createProject({ ...base, name, prospect_id: client || null })
+    const pr = await createProject({ ...base, name, prospect_id: client || null, demo_url: normalizeUrl(link) ?? base.demo_url ?? null })
     if (pr) { onClose(); nav(`/projets/${pr.id}`) }
   }
 
   return (
     <Sheet open={open} onClose={onClose} title="Nouveau site" size="sm"
-      footer={<button className="btn-primary w-full" disabled={!name.trim()} onClick={save}>Lancer le site</button>}>
+      footer={<button className="btn-primary w-full" disabled={!name.trim()} onClick={save}>Ajouter le site</button>}>
       <div className="flex flex-col gap-4">
         <Field label="Client">
           <Select value={client} onChange={(e) => setClient(e.target.value)}>
@@ -47,6 +49,8 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
           </Select>
         </Field>
         <Field label="Nom du site *"><Input value={name} onChange={(e) => { setName(e.target.value); setTouched(true) }} placeholder="Ex. Site Coffee Concept" /></Field>
+        <Field label="Lien du site"><Input inputMode="url" autoCapitalize="none" autoCorrect="off" autoComplete="off" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…vercel.app" /></Field>
+        <p className="text-[13px] text-muted -mt-1">Il arrive dans les sites livrés. Vous pourrez le passer en cours.</p>
       </div>
     </Sheet>
   )

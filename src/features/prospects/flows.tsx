@@ -23,11 +23,11 @@ export function useProspectFlow() {
       toast(`${p.name} : ${target.label.toLowerCase()}`, 'default', { label: 'Annuler', run: () => setProspectStatus(p.id, p.status, { lost_reason: p.lost_reason }) })
       return
     }
-    // Accepté : le site est lancé d'office, on ne pose pas de question
+    // Accepté : sans site, il est créé d'office, on ne pose pas de question
     celebrate()
     const existing = useStore.getState().db.projects.find((x) => x.prospect_id === p.id && !x.archived)
     const site = existing ?? await createProject(projectDraftFrom(p))
-    toast(existing ? `${p.name} a accepté` : `${p.name} a accepté : site en cours`, 'success', site ? { label: 'Voir le site', run: () => nav(`/projets/${site.id}`) } : undefined)
+    toast(existing ? `${p.name} a accepté` : `${p.name} a accepté : site ajouté`, 'success', site ? { label: 'Voir le site', run: () => nav(`/projets/${site.id}`) } : undefined)
   }
 
   const ui: ReactNode = (

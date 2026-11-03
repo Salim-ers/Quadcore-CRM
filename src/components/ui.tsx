@@ -291,11 +291,13 @@ export function Fold({ title, icon, count, defaultOpen = false, children }: {
 export function StepSwitch<T extends string>({ options, value, onChange, label }: {
   options: { value: T; label: string; tone: Tone }[]; value: T; onChange: (v: T) => void; label: string
 }) {
+  // À cinq, deux rangées (3 + 2) : les libellés restent entiers sur téléphone
+  const rows = options.length === 5
   return (
-    <div role="radiogroup" aria-label={label} className="grid gap-1 bg-sunken rounded-xl p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
-      {options.map((o) => (
+    <div role="radiogroup" aria-label={label} className="grid gap-1 bg-sunken rounded-xl p-1" style={{ gridTemplateColumns: `repeat(${rows ? 6 : options.length}, minmax(0, 1fr))` }}>
+      {options.map((o, i) => (
         <button key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
-          className={cx('h-11 px-0.5 rounded-lg text-[13px] font-semibold inline-flex items-center justify-center gap-1 transition', value === o.value ? 'bg-surface shadow-card text-ink' : 'text-muted hover:text-ink')}>
+          className={cx('h-11 px-0.5 rounded-lg text-[13px] font-semibold inline-flex items-center justify-center gap-1 transition', rows && (i < 3 ? 'col-span-2' : 'col-span-3'), value === o.value ? 'bg-surface shadow-card text-ink' : 'text-muted hover:text-ink')}>
           {value === o.value && <span className={cx('w-1.5 h-1.5 rounded-full shrink-0', TONES[o.tone].dot)} />}
           <span className="truncate">{o.label}</span>
         </button>

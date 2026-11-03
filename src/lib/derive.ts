@@ -9,7 +9,7 @@ export const needsFollowUp = (p: Prospect, today = todayStr()) =>
 
 /** Combien de dossiers à chaque étape du parcours */
 export function stepCounts(db: DB) {
-  const c = { prospect: 0, vu: 0, accepte: 0, refuse: 0, en_cours: 0, livre: 0 }
+  const c = { prospect: 0, vu: 0, attente: 0, accepte: 0, refuse: 0, en_cours: 0, livre: 0 }
   for (const p of db.prospects) if (!p.archived) c[prospectStep(p.status)]++
   for (const p of liveProjects(db)) c[siteStep(p.status)]++
   return c

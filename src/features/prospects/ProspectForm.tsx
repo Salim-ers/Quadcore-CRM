@@ -4,7 +4,7 @@ import { Field, Input, Select, Sheet, TextArea, cx } from '../../components/ui'
 import { OwnerButton } from '../../components/bits'
 import { CATEGORIES, PRIORITIES, SERVICES, SOURCES } from '../../lib/constants'
 import type { Prospect } from '../../lib/types'
-import { updateProspect } from '../../data/actions'
+import { createProject, projectDraftFrom, updateProspect } from '../../data/actions'
 import { useStore } from '../../data/store'
 
 const FIELDS = [
@@ -34,6 +34,8 @@ export function ProspectForm({ prospect, open, onClose }: { prospect: Prospect; 
       if (v !== prospect[k]) (patch as Record<string, unknown>)[k] = v
     }
     if (Object.keys(patch).length) await updateProspect(prospect.id, patch)
+    // Le lien ajouté après coup crée le site, comme à la création de la fiche
+    if (patch.website_url && !hasSite) await createProject(projectDraftFrom({ ...prospect, ...patch }))
     onClose()
   }
 

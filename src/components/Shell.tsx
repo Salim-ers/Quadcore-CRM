@@ -77,8 +77,8 @@ export function Shell({ children }: { children: ReactNode }) {
       return { to: s.value === 'prospect' ? '/prospects' : `/prospects?f=${s.value}`, label: s.plural, count: counts[s.value], active: s.value === 'prospect' ? !f : f === s.value }
     }),
     '/projets': [
-      { to: '/projets', label: 'En cours', count: counts.en_cours, active: new URLSearchParams(loc.search).get('g') !== 'livres' },
       { to: '/projets?g=livres', label: 'Livrés', count: counts.livre, active: new URLSearchParams(loc.search).get('g') === 'livres' },
+      { to: '/projets?g=en_cours', label: 'En cours', count: counts.en_cours, active: new URLSearchParams(loc.search).get('g') === 'en_cours' },
     ],
   }
 

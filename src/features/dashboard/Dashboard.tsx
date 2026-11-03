@@ -19,6 +19,7 @@ const TODAY_MAX = 3
 const STEP_LOOK: Record<ProspectStep, { icon: LucideIcon; bar: string }> = {
   prospect: { icon: Store, bar: 'bg-copper' },
   vu: { icon: Eye, bar: 'bg-sky-600' },
+  attente: { icon: Hourglass, bar: 'bg-amber-600' },
   accepte: { icon: ThumbsUp, bar: 'bg-emerald-500 dark:bg-emerald-600' },
   refuse: { icon: ThumbsDown, bar: 'bg-rose-600 dark:bg-rose-500' },
 }
@@ -104,7 +105,7 @@ function SitesHero({ livre, enCours, empty, className }: { livre: number; enCour
       <Rocket aria-hidden size={124} strokeWidth={1.2} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-15 pointer-events-none" />
       <p className="text-[14.5px] font-semibold">Sites livrés</p>
       <p className="h-display text-[68px] leading-none mt-2 mb-5">{livre}</p>
-      <Link to="/projets" className="relative z-10 mt-auto self-start inline-flex items-center gap-2 h-10 pl-3.5 pr-2.5 rounded-full bg-black/20 hover:bg-black/30 transition text-[14px] font-semibold">
+      <Link to="/projets?g=en_cours" className="relative z-10 mt-auto self-start inline-flex items-center gap-2 h-10 pl-3.5 pr-2.5 rounded-full bg-black/20 hover:bg-black/30 transition text-[14px] font-semibold">
         <span className={cx('w-2 h-2 rounded-full bg-amber-300', enCours > 0 && 'animate-pulse')} />
         {enCours} site{enCours > 1 ? 's' : ''} en cours<ChevronRight size={16} />
       </Link>
@@ -129,12 +130,12 @@ function Prospection({ counts, className }: { counts: ReturnType<typeof stepCoun
           <span key={s.value} className={cx('min-w-[8px] rounded-full transition-[flex-grow] duration-500', STEP_LOOK[s.value].bar)} style={{ flexGrow: counts[s.value], flexBasis: 0 }} />
         ))}
       </div>
-      <nav aria-label="Parcours" className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3.5">
+      <nav aria-label="Parcours" className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3.5">
         {PROSPECT_STEPS.map((s) => {
           const Icon = STEP_LOOK[s.value].icon
           return (
             <Link key={s.value} to={s.value === 'prospect' ? '/prospects' : `/prospects?f=${s.value}`}
-              className="flex items-center gap-2.5 p-2.5 rounded-xl bg-sunken/60 hover:bg-sunken transition active:scale-[.98]">
+              className={cx('flex items-center sm:flex-col sm:items-start gap-2.5 p-2.5 rounded-xl bg-sunken/60 hover:bg-sunken transition active:scale-[.98]', s.value === 'prospect' && 'col-span-2 sm:col-span-1')}>
               <span className={cx('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', TONES[s.tone].badge)}><Icon size={18} /></span>
               <span className="min-w-0">
                 <span className="block h-display text-[24px] leading-none">{counts[s.value]}</span>
