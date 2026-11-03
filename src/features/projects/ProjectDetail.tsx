@@ -10,6 +10,7 @@ import { BILLING, SITE_STEPS, TONES, siteStep } from '../../lib/constants'
 import { fullName } from '../../lib/derive'
 import { prettyUrl, whatsappLink, mailLink } from '../../lib/links'
 import { moveSite } from './flows'
+import { PriceButton } from './PriceButton'
 import { ProjectEditSheet } from './ProjectForm'
 import { Revisions } from './Revisions'
 import { Attachments, Timeline } from '../shared/Timeline'
@@ -62,12 +63,11 @@ export function ProjectDetail() {
         <div className="max-w-2xl mx-auto flex flex-col gap-3">
           <div className="card p-4">
             <StepSwitch label="Étape du site" value={step} onChange={(v) => moveSite(p, v)} options={SITE_STEPS} />
-            {(owner || (step === 'en_cours' && p.due_date)) && (
-              <div className="flex items-center gap-3 mt-3">
-                {step === 'en_cours' && <DueChip date={p.due_date} />}
-                {owner && <span className="ml-auto inline-flex items-center gap-2 text-[13px] text-muted"><Avatar profile={owner} size={24} />{owner.first_name}</span>}
-              </div>
-            )}
+            <div className="flex items-center gap-3 mt-3">
+              <PriceButton project={p} />
+              {step === 'en_cours' && <DueChip date={p.due_date} />}
+              {owner && <span className="ml-auto inline-flex items-center gap-2 text-[13px] text-muted"><Avatar profile={owner} size={24} />{owner.first_name}</span>}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

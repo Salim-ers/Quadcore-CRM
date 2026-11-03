@@ -8,6 +8,7 @@ import { DueChip, ProspectThumb } from '../../components/bits'
 import { normalizeUrl, telLink, whatsappLink } from '../../lib/links'
 import { useFileUrl } from '../../lib/useFileUrl'
 import { useStore } from '../../data/store'
+import { PriceButton } from '../projects/PriceButton'
 
 const SITE_TINT = 'bg-copper/12 text-copper-ink hover:bg-copper/20'
 const DECISIONS: { to: ProspectStep; label: string; icon: typeof Check; tint: string }[] = [
@@ -45,6 +46,7 @@ export const ProspectCard = memo(function ProspectCard({ p, owner, onStep }: {
           <div className="flex items-center flex-wrap gap-x-3 text-[13px] text-muted mt-0.5 min-w-0">
             {p.city && <span className="inline-flex items-center gap-1 truncate"><MapPin size={13} className="shrink-0" />{p.city}</span>}
             {deciding && <DueChip date={p.next_follow_up} />}
+            {site && <PriceButton project={site} />}
           </div>
         </div>
         {tel && <a href={tel} className="relative z-10 icon-btn w-10 h-10 bg-sunken" aria-label={`Appeler ${p.name}`}><Phone size={17} /></a>}

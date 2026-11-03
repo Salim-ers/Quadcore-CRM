@@ -6,6 +6,7 @@ import { OwnerButton } from '../../components/bits'
 import { BILLING, PROJECT_TYPES } from '../../lib/constants'
 import type { Project, ProjectType, UUID } from '../../lib/types'
 import { createProject, projectDraftFrom, updateProject } from '../../data/actions'
+import { parsePrice } from '../../lib/derive'
 import { normalizeUrl } from '../../lib/links'
 import { useStore } from '../../data/store'
 
@@ -15,14 +16,16 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
   const [client, setClient] = useState<string>('')
   const [name, setName] = useState('')
   const [link, setLink] = useState('')
+  const [priceText, setPriceText] = useState('')
   const [touched, setTouched] = useState(false)
+  const price = parsePrice(priceText)
 
   const sorted = useMemo(() => prospects.filter((p) => !p.archived).sort((a, b) =>
     (a.status === 'gagne' ? 0 : 1) - (b.status === 'gagne' ? 0 : 1) || a.name.localeCompare(b.name, 'fr')), [prospects])
 
   useEffect(() => {
     if (!open) return
-    setClient(prospectId ?? ''); setName(''); setLink(''); setTouched(false)
+    setClient(prospectId ?? ''); setName(''); setLink(''); setPriceText(''); setTouched(false)
   }, [open, prospectId])
 
   useEffect(() => {
@@ -34,13 +37,13 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
   async function save() {
     const p = prospects.find((x) => x.id === client)
     const base = p ? projectDraftFrom(p) : {}
-    const pr = await createProject({ ...base, name, prospect_id: client || null, demo_url: normalizeUrl(link) ?? base.demo_url ?? null })
+    const pr = await createProject({ ...base, name, prospect_id: client || null, demo_url: normalizeUrl(link) ?? base.demo_url ?? null, price_proposed: price })
     if (pr) { onClose(); nav(`/projets/${pr.id}`) }
   }
 
   return (
     <Sheet open={open} onClose={onClose} title="Nouveau site" size="sm"
-      footer={<button className="btn-primary w-full" disabled={!name.trim()} onClick={save}>Ajouter le site</button>}>
+      footer={<button className="btn-primary w-full" disabled={!name.trim() || Number.isNaN(price)} onClick={save}>Ajouter le site</button>}>
       <div className="flex flex-col gap-4">
         <Field label="Client">
           <Select value={client} onChange={(e) => setClient(e.target.value)}>
@@ -50,6 +53,7 @@ export function NewProjectSheet({ open, onClose, prospectId }: { open: boolean; 
         </Field>
         <Field label="Nom du site *"><Input value={name} onChange={(e) => { setName(e.target.value); setTouched(true) }} placeholder="Ex. Site Coffee Concept" /></Field>
         <Field label="Lien du site"><Input inputMode="url" autoCapitalize="none" autoCorrect="off" autoComplete="off" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…vercel.app" /></Field>
+        <Field label="Prix proposé (€)"><Input inputMode="decimal" autoComplete="off" value={priceText} onChange={(e) => setPriceText(e.target.value)} placeholder="900" /></Field>
         <p className="text-[13px] text-muted -mt-1">Il arrive dans les sites livrés. Vous pourrez le passer en cours.</p>
       </div>
     </Sheet>

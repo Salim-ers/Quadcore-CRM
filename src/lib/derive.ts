@@ -15,6 +15,27 @@ export function stepCounts(db: DB) {
   return c
 }
 
+/** Réel : les clients acceptés, au prix accepté s'il existe. Prévisionnel : les autres prix proposés. Un refus ne compte plus. */
+export function moneySplit(db: DB) {
+  const clients = new Map(db.prospects.map((p) => [p.id, p]))
+  const m = { reel: 0, previsionnel: 0 }
+  for (const s of liveProjects(db)) {
+    const c = s.prospect_id ? clients.get(s.prospect_id) : undefined
+    if (c?.archived || c?.status === 'perdu') continue
+    if (c?.status === 'gagne' || s.price_accepted != null) m.reel += Number(s.price_accepted ?? s.price_proposed ?? 0)
+    else m.previsionnel += Number(s.price_proposed ?? 0)
+  }
+  return m
+}
+
+/** Lit un montant saisi (« 1 500 », « 900,50 € »). Vide : null. Illisible : NaN. */
+export function parsePrice(input: string) {
+  const v = input.replace(/[\s€]/g, '').replace(',', '.')
+  if (!v) return null
+  const n = Number(v)
+  return Number.isFinite(n) && n >= 0 && n < 1e8 ? n : NaN
+}
+
 export type TodayItem =
   | { kind: 'task'; id: string; task: Task; late: boolean }
   | { kind: 'followup'; id: string; prospect: Prospect; late: boolean }

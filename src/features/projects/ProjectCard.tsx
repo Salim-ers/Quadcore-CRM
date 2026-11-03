@@ -10,6 +10,7 @@ import { useUi } from '../../components/Shell'
 import { isTicketOpen } from '../../lib/derive'
 import { normalizeUrl } from '../../lib/links'
 import { moveSite } from './flows'
+import { PriceButton } from './PriceButton'
 
 /** Carte d'un site : un bouton pour changer d'étape, le lien pour l'ouvrir. */
 export const ProjectCard = memo(function ProjectCard({ project, hideClient }: { project: Project; hideClient?: boolean }) {
@@ -34,6 +35,7 @@ export const ProjectCard = memo(function ProjectCard({ project, hideClient }: { 
             {problems > 0 && <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-danger"><TriangleAlert size={13} />{problems} problème{problems > 1 ? 's' : ''}</span>}
           </div>
         </div>
+        <PriceButton project={project} />
         {owner && <Avatar profile={owner} size={28} />}
       </div>
       <div className="flex items-center gap-2 mt-3">

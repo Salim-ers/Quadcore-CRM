@@ -5,10 +5,11 @@ import {
 } from 'lucide-react'
 import { Page, useUi } from '../../components/Shell'
 import { Avatar, Fold, Section, cx } from '../../components/ui'
+import { euros } from '../../components/bits'
 import { useMe, useStore } from '../../data/store'
 import { toggleTask } from '../../data/actions'
 import { PROSPECT_STEPS, TONES, type ProspectStep } from '../../lib/constants'
-import { stepCounts, ticketRef, todayItems, type TodayItem } from '../../lib/derive'
+import { moneySplit, stepCounts, ticketRef, todayItems, type TodayItem } from '../../lib/derive'
 import { dueLabel, greeting, relTime, todayLong } from '../../lib/dates'
 import { telLink, whatsappLink } from '../../lib/links'
 import { describeActivity, FEED_TYPES } from '../shared/activity'
@@ -30,6 +31,7 @@ export function Dashboard() {
   const me = useMe()
   const [feedLimit, setFeedLimit] = useState(12)
   const c = useMemo(() => stepCounts(db), [db])
+  const money = useMemo(() => moneySplit(db), [db])
   const items = useMemo(() => todayItems(db, userId), [db, userId])
   const feed = useMemo(() => db.activities.filter((a) => FEED_TYPES.has(a.type)), [db.activities])
   const byId = useMemo(() => new Map(db.profiles.map((p) => [p.id, p])), [db.profiles])
@@ -47,7 +49,8 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
         <SitesHero livre={c.livre} enCours={c.en_cours} empty={empty} className="lg:col-span-2" />
-        <Prospection counts={c} className="lg:col-span-3" />
+        {!empty && <Revenue {...money} className="lg:col-span-3" />}
+        <Prospection counts={c} className={empty ? 'lg:col-span-3' : 'lg:col-span-5'} />
       </div>
 
       {items.length > 0 && (
@@ -110,6 +113,69 @@ function SitesHero({ livre, enCours, empty, className }: { livre: number; enCour
         {enCours} site{enCours > 1 ? 's' : ''} en cours<ChevronRight size={16} />
       </Link>
     </div>
+  )
+}
+
+/** Le camembert du chiffre d'affaires : le réel et le prévisionnel, avec les montants écrits à côté. */
+function Revenue({ reel, previsionnel, className }: { reel: number; previsionnel: number; className?: string }) {
+  const total = reel + previsionnel
+  const reelShare = total ? Math.round((reel / total) * 100) : 0
+  // Couleurs vérifiées pour les daltonismes, en clair et en sombre
+  const parts = [
+    { label: 'Réel', value: reel, share: reelShare, fill: 'fill-emerald-500 dark:fill-emerald-600', swatch: 'bg-emerald-500 dark:bg-emerald-600' },
+    { label: 'Prévisionnel', value: previsionnel, share: 100 - reelShare, fill: 'fill-sky-600', swatch: 'bg-sky-600' },
+  ]
+  return (
+    <section className={cx('card p-4 flex flex-col', className)}>
+      <div className="flex items-baseline justify-between gap-3 mb-3">
+        <h2 className="font-bold text-[16px]">Chiffre d’affaires</h2>
+        {total > 0 && <p className="text-[13.5px] font-semibold text-muted whitespace-nowrap">Total {euros(total)}</p>}
+      </div>
+      {total === 0 ? (
+        <div className="flex items-center gap-4">
+          <svg viewBox="0 0 100 100" aria-hidden className="w-[88px] h-[88px] shrink-0"><circle cx="50" cy="50" r="48" className="fill-sunken" /></svg>
+          <div className="min-w-0">
+            <p className="text-[14px] text-muted leading-snug">Mettez le prix proposé sur vos sites pour voir le réel et le prévisionnel.</p>
+            <Link to="/projets" className="btn-soft h-10 min-h-0 mt-2.5 text-[14px]">Mettre les prix<ChevronRight size={16} /></Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-4">
+            <Pie parts={parts} total={total} />
+            <div className="flex-1 min-w-0 flex flex-col gap-3">
+              {parts.map((p) => (
+                <div key={p.label}>
+                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-muted">
+                    <span className={cx('w-2.5 h-2.5 rounded-sm shrink-0', p.swatch)} />{p.label}<span className="ml-auto tabular text-faint whitespace-nowrap">{p.share} %</span>
+                  </p>
+                  <p className="h-display text-[24px] leading-tight mt-0.5">{euros(p.value)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-[12px] text-faint mt-3">Réel : clients acceptés. Prévisionnel : les autres prix proposés.</p>
+        </>
+      )}
+    </section>
+  )
+}
+
+function Pie({ parts, total }: { parts: { label: string; value: number; fill: string }[]; total: number }) {
+  const shown = parts.filter((p) => p.value > 0)
+  const point = (a: number) => `${50 + 48 * Math.cos(a)} ${50 + 48 * Math.sin(a)}`
+  let angle = -Math.PI / 2
+  return (
+    <svg viewBox="0 0 100 100" role="img" aria-label={parts.map((p) => `${p.label} : ${euros(p.value)}`).join(', ')} className="w-[92px] h-[92px] min-[360px]:w-[112px] min-[360px]:h-[112px] shrink-0">
+      {shown.map((p) => {
+        const title = <title>{`${p.label} : ${euros(p.value)}`}</title>
+        if (shown.length === 1) return <circle key={p.label} cx="50" cy="50" r="48" className={p.fill}>{title}</circle>
+        const sweep = (p.value / total) * 2 * Math.PI
+        const from = point(angle)
+        angle += sweep
+        return <path key={p.label} d={`M50 50 L${from} A48 48 0 ${sweep > Math.PI ? 1 : 0} 1 ${point(angle)} Z`} strokeWidth="2" strokeLinejoin="round" className={cx(p.fill, 'stroke-surface')}>{title}</path>
+      })}
+    </svg>
   )
 }
 

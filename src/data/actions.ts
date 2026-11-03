@@ -8,7 +8,7 @@ import { todayStr } from '../lib/dates'
 const db = () => useStore.getState().db
 
 // ———————————————————————— Prospects ————————————————————————
-export async function createProspect(input: Partial<Prospect>) {
+export async function createProspect(input: Partial<Prospect>, site: Partial<Project> = {}) {
   const ig = normalizeInstagram(input.instagram_handle ?? input.instagram_url ?? null)
   const row = await insertRow('prospects', {
     owner_id: me()?.id ?? null,
@@ -22,7 +22,7 @@ export async function createProspect(input: Partial<Prospect>) {
     created_by: me()?.id ?? null,
   })
   // Un lien, c'est un site déjà prêt : il arrive tout de suite dans les sites livrés
-  if (row?.website_url) await createProject(projectDraftFrom(row))
+  if (row?.website_url) await createProject({ ...projectDraftFrom(row), ...site })
   return row
 }
 

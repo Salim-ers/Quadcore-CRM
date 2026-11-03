@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, AtSign, Globe, Phone, MapPin } from 'lucide-react'
+import { ChevronDown, AtSign, Euro, Globe, Phone, MapPin } from 'lucide-react'
 import { Field, Input, Select, Sheet, TextArea, cx } from '../../components/ui'
 import { CategoryIcon, OwnerButton } from '../../components/bits'
 import { CATEGORIES, PRIORITIES, SERVICES, SOURCES } from '../../lib/constants'
 import type { Category, Priority, UUID } from '../../lib/types'
 import { createProspect } from '../../data/actions'
+import { parsePrice } from '../../lib/derive'
 import { normalizeUrl } from '../../lib/links'
 import { toast, useStore } from '../../data/store'
 
 const blank = () => ({
-  name: '', website_url: '', instagram: '', phone: '', city: '', category: null as Category | null,
+  name: '', website_url: '', price: '', instagram: '', phone: '', city: '', category: null as Category | null,
   contact_name: '', email: '', source: '', service: '', priority: 'normale' as Priority, notes: '',
 })
 
@@ -37,8 +38,12 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
     return n.length >= 3 ? s.db.prospects.find((p) => p.name.toLowerCase() === n) : undefined
   })
 
+  const hasLink = !!f.website_url.trim()
+  const price = hasLink ? parsePrice(f.price) : null
+
   async function submit() {
     if (!f.name.trim()) { nameRef.current?.focus(); return }
+    if (Number.isNaN(price)) return
     setSaving(true)
     const ig = f.instagram.trim()
     const row = await createProspect({
@@ -55,7 +60,7 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
       priority: f.priority,
       notes: f.notes.trim() || null,
       owner_id: owner,
-    })
+    }, { price_proposed: price })
     setSaving(false)
     if (!row) return
     onClose()
@@ -64,7 +69,7 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
 
   return (
     <Sheet open={open} onClose={onClose} title="Nouveau prospect" size="sm"
-      footer={<button className="btn-primary w-full" disabled={saving || !f.name.trim()} onClick={submit}>Ajouter</button>}>
+      footer={<button className="btn-primary w-full" disabled={saving || !f.name.trim() || Number.isNaN(price)} onClick={submit}>Ajouter</button>}>
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-3">
         <div>
           <Input ref={nameRef} aria-label="Nom du commerce" value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Nom du commerce" autoComplete="off" enterKeyHint="done" />
@@ -75,6 +80,13 @@ export function QuickAddProspect({ open, onClose }: { open: boolean; onClose: ()
           <Globe size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
           <Input className="pl-10" inputMode="url" value={f.website_url} onChange={(e) => set('website_url', e.target.value)} placeholder="Lien du site" autoCapitalize="none" autoCorrect="off" autoComplete="off" />
         </label>
+        {hasLink && (
+          <label className="relative block animate-fade-up">
+            <span className="sr-only">Prix proposé</span>
+            <Euro size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
+            <Input className="pl-10" inputMode="decimal" value={f.price} onChange={(e) => set('price', e.target.value)} placeholder="Prix proposé" autoComplete="off" />
+          </label>
+        )}
         <label className="relative block">
           <span className="sr-only">Téléphone</span>
           <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
