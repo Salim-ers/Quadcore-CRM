@@ -13,5 +13,5 @@
     "noUnusedParameters": true,
     "types": ["node"]
   },
-  "include": ["neon.ts", "neon-functions", "functions"]
+  "include": ["neon.ts", "neon-functions"]
 }

@@ -3,7 +3,7 @@
 Outil interne de QUADCORE : prospection, suivi des clients par tickets, production des sites web.
 Il est pensé d'abord pour le téléphone, s'installe comme une application (PWA) et est partagé entre les quatre associés : Salim EL RHALMANI, Hasan AKAR, Sadish AROUL et Moustakine MOUHAMAD.
 
-**Stack :** React 18 + TypeScript, Vite, Tailwind CSS, Neon (Postgres, Managed Better Auth, Data API, Functions, Object Storage), Cloudflare Pages, Lucide.
+**Stack :** React 18 + TypeScript, Vite, Tailwind CSS, Neon (Postgres, Managed Better Auth, Data API, Functions, Object Storage), Vercel, Lucide.
 
 ---
 
@@ -31,39 +31,37 @@ Il est pensé d'abord pour le téléphone, s'installe comme une application (PWA
 
 ## 2. Mise en ligne
 
-Il faut un compte [Neon](https://neon.com) et un compte [Cloudflare](https://dash.cloudflare.com). Les comptes des quatre associés sont déjà décrits dans `src/lib/team.json`.
+L'application est hébergée sur le projet Vercel `quadcore-crm` (https://quadcore-crm.vercel.app), relié à ce dépôt, et ses données sur le projet Neon `long-haze-30062964` (organisation « Vercel: QuadCore », région Francfort). Les comptes des quatre associés sont décrits dans `src/lib/team.json`.
 
 ### a. Neon
 ```bash
 npx neon login                                                       # ou une clé dans NEON_API_KEY
-npx neon projects create --name quadcore --region-id aws-eu-central-1
-npx neon link                                                        # lie ce dossier au projet
+npx neon link --project-id long-haze-30062964 --org-id org-falling-art-60262323
 npx neon deploy                                                      # authentification, Data API, bucket, fonction (neon.ts)
-npx neon env pull                                                    # écrit les accès dans .env
 ```
-Région Francfort : les données restent en Europe, et c'est l'une des régions où les Neon Functions existent.
+`neon deploy` écrit aussi les accès dans `.env.local`, qui n'est pas versionné.
 
-### b. Cloudflare Pages
-1. Créez un projet Pages relié au dépôt. Commande de build `npm run build`, dossier de sortie `dist`.
-2. Ajoutez ces variables (voir `.env.example`) : `VITE_NEON_DATA_API_URL` (`npx neon data-api get`), `VITE_NEON_FILES_URL` (`npx neon functions get fichiers`), `NEON_AUTH_URL` (`NEON_AUTH_BASE_URL` dans le `.env`). Sans les deux premières, le build échoue volontairement plutôt que de publier le mode démonstration.
-3. Notez l'adresse obtenue, ou reliez un sous-domaine (ex. `https://app.quad-core.fr`).
+### b. Vercel
+Rien à configurer : le déploiement suit le dépôt. Les adresses Neon publiques sont dans `.env.production`, et `api/auth-proxy.js` relaie l'authentification par le domaine de l'app. Sans ce relais, le cookie de session serait un cookie tiers, bloqué par Safari et l'iPhone, et il faudrait se reconnecter sans cesse.
 
-Le dossier `functions/` est déployé tout seul : il relaie l'authentification par le domaine de l'app. Sans ce relais, le cookie de session serait un cookie tiers, bloqué par Safari et l'iPhone, et il faudrait se reconnecter sans cesse.
+Si le projet Neon change, mettez à jour `.env.production` (`npx neon data-api get`, `npx neon functions get fichiers`) et l'adresse de secours en tête de `api/auth-proxy.js`.
 
 ### c. Installation
 ```bash
-APP_URL=https://app.quad-core.fr npm run neon:installer
+APP_URL=https://quadcore-crm.vercel.app npm run neon:installer
 ```
-Le script applique le schéma, ferme les inscriptions publiques, autorise le domaine, configure le bucket, crée les quatre comptes administrateurs et vérifie les droits. Il peut être relancé sans risque.
+Le script applique le schéma, ferme les inscriptions publiques et l'accès depuis localhost, autorise le domaine, configure le bucket, crée les quatre comptes administrateurs et vérifie les droits. Il peut être relancé sans risque. Relancez-le si l'adresse de l'application change : le bucket n'accepte qu'une seule origine, la dernière indiquée.
+
+Pour que les e-mails portent le bon nom, renseignez **QUADCORE** dans **Neon › Settings › Better Auth › Application Name**.
 
 ### d. Première connexion
 ```bash
-APP_URL=https://app.quad-core.fr npm run neon:installer -- --envoyer-liens
+APP_URL=https://quadcore-crm.vercel.app npm run neon:installer -- --envoyer-liens
 ```
 Chacun reçoit un lien pour choisir son mot de passe. **Il est valable 15 minutes** : passé ce délai, « Mot de passe oublié » sur l'écran de connexion en envoie un autre. Sur chaque téléphone, ouvrez l'URL et choisissez **Ajouter à l'écran d'accueil**.
 
 ### e. E-mails
-L'expéditeur partagé de Neon (`auth@mail.myneon.app`) suffit pour démarrer, mais son débit est limité et le message ne porte pas votre nom. Pour écrire depuis `@quad-core.fr`, renseignez un service SMTP dans **Neon › Settings › Better Auth › Custom SMTP provider**.
+L'expéditeur partagé de Neon (`auth@mail.myneon.app`) suffit pour démarrer, mais son débit est limité et le message ne vient pas de votre domaine. Pour écrire depuis `@quad-core.fr`, renseignez un service SMTP dans **Neon › Settings › Better Auth › Custom SMTP provider**.
 
 ### f. Sauvegardes
 Le plan gratuit de Neon permet de revenir 6 heures en arrière, avec une seule sauvegarde manuelle. Avant d'y mettre de vraies données clients, passez au plan Launch (facturé à l'usage, sans minimum), qui va jusqu'à 7 jours. En plan gratuit, la base s'endort après 5 minutes sans activité : la première action qui suit prend une seconde de plus.
@@ -73,7 +71,7 @@ Le plan gratuit de Neon permet de revenir 6 heures en arrière, avec une seule s
 npm install
 npm run dev                  # http://localhost:5173
 ```
-Sans variables Neon, `npm run dev` démarre en **mode démonstration** : les données sont fictives et stockées dans le navigateur. Pour travailler sur Neon, copiez `.env.example` vers `.env.local` et renseignez-le.
+Sans variables Neon, `npm run dev` démarre en **mode démonstration** : les données sont fictives et stockées dans le navigateur. Pour travailler sur Neon, créez une branche Neon (`npx neon branches create`, puis `npx neon deploy --branch <nom> --no-env-pull`), écrivez ses accès avec `npx neon env pull --branch <nom> --file .env.local`, et complétez ce fichier d'après `.env.example`. La branche principale refuse les connexions depuis localhost.
 
 `npm run build:demo` produit `dist-demo/index.html`. C'est un aperçu autonome en un seul fichier, en mode démo.
 
@@ -82,7 +80,7 @@ Sans variables Neon, `npm run dev` démarre en **mode démonstration** : les don
 ```
 neon.ts            services Neon (authentification, Data API, bucket, fonction)
 neon-functions/    fichiers.ts : URL signées du bucket, réservées aux membres actifs
-functions/         api/auth : relais de Neon Auth par le domaine de l'app (Cloudflare Pages)
+api/               auth-proxy.js : relais de Neon Auth par le domaine de l'app (Vercel Function)
 scripts/           installer-neon.mjs : schéma, CORS, comptes de l'équipe
 db/migrations/     0001_quadcore · 0002_suivi_clients · 0003_synchronisation
 src/

@@ -2,7 +2,7 @@
 // Prérequis : `npx neon link`, `npx neon deploy` puis `npx neon env pull` (voir README).
 // Sans danger à relancer : ce qui existe déjà est conservé.
 //
-//   APP_URL=https://app.quad-core.fr npm run neon:installer
+//   APP_URL=https://quadcore-crm.vercel.app npm run neon:installer
 //   Ajouter --envoyer-liens pour envoyer à chacun le lien « choisir mon mot de passe » (valable 15 minutes).
 import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
@@ -20,7 +20,8 @@ const APP_URL = need('APP_URL').replace(/\/$/, '')
 const DATABASE_URL = process.env.DATABASE_URL_UNPOOLED || need('DATABASE_URL')
 const BUCKET = 'quadcore-fichiers'
 const team = JSON.parse(readFileSync('src/lib/team.json', 'utf8'))
-const neon = (...args) => execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['neon', ...args], { encoding: 'utf8', shell: process.platform === 'win32' })
+// Le CLI est appelé sans shell : sous Windows, un shell couperait les noms qui contiennent des espaces
+const neon = (...args) => execFileSync(process.execPath, ['node_modules/neon/dist/cli.js', ...args], { encoding: 'utf8' })
 const step = (s) => console.log(`\n— ${s}`)
 
 const db = new pg.Client({ connectionString: DATABASE_URL })
@@ -49,6 +50,8 @@ step('Authentification')
 neon('neon-auth', 'config', 'email-password', 'update', '--disable-sign-up')
 console.log('  inscriptions publiques fermées')
 try { neon('neon-auth', 'domain', 'add', APP_URL); console.log(`  domaine autorisé : ${APP_URL}`) } catch { console.log(`  domaine déjà autorisé : ${APP_URL}`) }
+neon('neon-auth', 'domain', 'allow-localhost', 'disable')
+console.log('  accès depuis localhost fermé')
 
 step('Fichiers : envoi direct depuis le navigateur')
 const s3 = new S3Client({ region: need('AWS_REGION'), endpoint: need('AWS_ENDPOINT_URL_S3'), forcePathStyle: true, requestChecksumCalculation: 'WHEN_REQUIRED' })

@@ -23,7 +23,7 @@ interface AdminApi {
 }
 
 export function createNeonBackend(dataApiUrl: string, filesUrl: string): Backend {
-  // L'authentification passe par le domaine de l'app (functions/api/auth) : hébergé chez Neon,
+  // L'authentification passe par le domaine de l'app (api/auth-proxy.js) : hébergé chez Neon,
   // son cookie de session serait un cookie tiers, que Safari et iPhone bloquent.
   const client = createClient({ auth: { url: `${window.location.origin}/api/auth` }, dataApi: { url: dataApiUrl } })
   const auth = client.auth

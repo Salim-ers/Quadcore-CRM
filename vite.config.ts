@@ -21,9 +21,9 @@ export default defineConfig(({ mode, command }) => {
     build: single
       ? { outDir: 'dist-demo', assetsInlineLimit: 100_000_000, cssCodeSplit: false }
       : { outDir: 'dist', sourcemap: false },
-    // En local comme en ligne (functions/api/auth), l'authentification passe par le domaine de l'app
-    server: env.NEON_AUTH_URL ? {
-      proxy: { '/api/auth': { target: env.NEON_AUTH_URL.replace(/\/$/, ''), changeOrigin: true, rewrite: (path) => path.replace(/^\/api\/auth/, '') } },
+    // En local comme en ligne (api/auth-proxy.js), l'authentification passe par le domaine de l'app
+    server: env.NEON_AUTH_BASE_URL ? {
+      proxy: { '/api/auth': { target: env.NEON_AUTH_BASE_URL.replace(/\/$/, ''), changeOrigin: true, cookieDomainRewrite: '', rewrite: (path) => path.replace(/^\/api\/auth/, '') } },
     } : undefined,
     plugins: [
       react(),
