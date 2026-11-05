@@ -35,12 +35,15 @@ export default {
         'sheet-in': { from: { transform: 'translateY(100%)' }, to: { transform: 'none' } },
         'fade-in': { from: { opacity: 0 }, to: { opacity: 1 } },
         'pop-in': { from: { opacity: 0, transform: 'scale(.96)' }, to: { opacity: 1, transform: 'none' } },
+        // un segment de 40 % qui traverse la barre de bout en bout
+        loading: { from: { transform: 'translateX(-100%)' }, to: { transform: 'translateX(250%)' } },
       },
       animation: {
         'fade-up': 'fade-up .28s cubic-bezier(.2,.8,.2,1) both',
         'sheet-in': 'sheet-in .32s cubic-bezier(.2,.9,.25,1) both',
         'fade-in': 'fade-in .2s ease both',
         'pop-in': 'pop-in .2s cubic-bezier(.2,.8,.2,1) both',
+        loading: 'loading 1.1s cubic-bezier(.65,0,.35,1) infinite',
       },
     },
   },

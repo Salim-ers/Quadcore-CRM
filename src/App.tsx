@@ -28,11 +28,14 @@ function ScrollTop() {
   return null
 }
 
+// Une barre qui défile : une demi-barre figée qui clignote donnait l'impression d'un chargement bloqué
 function Splash() {
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-5 animate-fade-in">
+    <div role="status" aria-label="Chargement" className="min-h-[100dvh] flex flex-col items-center justify-center gap-5 animate-fade-in">
       <Logo size={46} withText={false} />
-      <span className="w-24 h-1 rounded-full bg-sunken overflow-hidden"><span className="block h-full w-1/2 bg-copper rounded-full animate-[fade-in_.8s_ease_infinite_alternate]" /></span>
+      <span className="relative w-28 h-1 rounded-full bg-copper/15 overflow-hidden">
+        <span className="absolute inset-y-0 left-0 w-2/5 rounded-full bg-copper animate-loading motion-reduce:animate-none" />
+      </span>
     </div>
   )
 }
