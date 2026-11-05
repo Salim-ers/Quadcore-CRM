@@ -1,6 +1,7 @@
 import type { DB, Project, Prospect, Task, Ticket, UUID } from './types'
 import { CLIENT_QUIET_DAYS, PROSPECT_CLOSED, TICKET_DONE, TICKET_WAIT_DAYS, prospectStep, siteStep, ticketPriority } from './constants'
 import { addDaysStr, endOfWeekStr, todayStr } from './dates'
+import { isAssigned } from './appointments'
 
 export const liveProjects = (db: DB) => db.projects.filter((p) => !p.archived)
 
@@ -173,7 +174,7 @@ export function todayItems(db: DB, userId: UUID | null): TodayItem[] {
   const mine = (owner: UUID | null) => userId === null || owner === userId
   const items: TodayItem[] = []
 
-  const openTasks = db.tasks.filter((t) => t.status !== 'termine' && t.due_date && t.due_date <= today && mine(t.assignee_id))
+  const openTasks = db.tasks.filter((t) => t.status !== 'termine' && t.due_date && t.due_date <= today && (userId === null || isAssigned(t, userId)))
   for (const t of openTasks) items.push({ kind: 'task', id: 't' + t.id, task: t, late: t.due_date! < today })
 
   const coveredByTask = new Set(db.tasks.filter((t) => t.status !== 'termine' && t.is_follow_up && t.prospect_id).map((t) => t.prospect_id))
@@ -224,7 +225,7 @@ export function filterTasks(tasks: Task[], view: TaskView, userId: UUID | null, 
       case 'today': return t.status !== 'termine' ? t.due_date === today : showDone && t.due_date === today
       case 'late': return t.status !== 'termine' && !!t.due_date && t.due_date < today
       case 'week': return open(t) && !!t.due_date && t.due_date >= today && t.due_date <= eow
-      case 'mine': return open(t) && t.assignee_id === userId
+      case 'mine': return open(t) && isAssigned(t, userId)
       case 'all': return open(t)
     }
   })

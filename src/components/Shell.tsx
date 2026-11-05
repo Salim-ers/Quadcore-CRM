@@ -4,6 +4,7 @@ import { BookOpen, CalendarDays, CheckSquare, ChevronDown, ChevronLeft, ChevronR
 import { create } from 'zustand'
 import { useMe, useStore, backend } from '../data/store'
 import { todayStr } from '../lib/dates'
+import { isAssigned } from '../lib/appointments'
 import { Avatar, Logo, Sheet, cx } from './ui'
 import { QuickAddProspect } from '../features/prospects/QuickAddProspect'
 import { TicketSheet, type TicketDraft } from '../features/tickets/TicketSheet'
@@ -39,7 +40,7 @@ const MORE = [
 function useTaskBadge() {
   return useStore((s) => {
     const t = todayStr()
-    return s.db.tasks.filter((x) => x.assignee_id === s.userId && x.status !== 'termine' && x.due_date && x.due_date <= t).length
+    return s.db.tasks.filter((x) => isAssigned(x, s.userId) && x.status !== 'termine' && x.due_date && x.due_date <= t).length
   })
 }
 

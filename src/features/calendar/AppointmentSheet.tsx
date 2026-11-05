@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BookOpen, CheckCircle2, Circle, FileText, Globe, MapPin, MonitorSmartphone, Store, Trash2 } from 'lucide-react'
+import { BookOpen, Check, CheckCircle2, Circle, FileText, Globe, MapPin, MonitorSmartphone, Store, Trash2 } from 'lucide-react'
 import { Avatar, Field, Input, Select, Sheet, StepSwitch, TextArea, confirmDialog, cx } from '../../components/ui'
 import { ContactActions, UrlTile } from '../../components/bits'
 import { createAppointment, deleteTask, updateAppointment, updateTask } from '../../data/actions'
@@ -77,20 +77,22 @@ export function AppointmentSheet({ draft, appointment, onClose }: { draft: Appoi
   const [date, setDate] = useState(todayStr())
   const [time, setTime] = useState('10:00')
   const [minutes, setMinutes] = useState(60)
-  const [who, setWho] = useState<UUID | ''>('')
+  // Ceux qui y vont, dans l'ordre choisi : le premier est le responsable du rendez-vous
+  const [who, setWho] = useState<UUID[]>([])
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const defaultWho = (p?: Prospect): UUID | '' => {
-    if (me && team.some((m) => m.id === me.id)) return me.id
-    return p?.owner_id && team.some((m) => m.id === p.owner_id) ? p.owner_id : ''
+  const defaultWho = (p?: Prospect): UUID[] => {
+    if (me && team.some((m) => m.id === me.id)) return [me.id]
+    return p?.owner_id && team.some((m) => m.id === p.owner_id) ? [p.owner_id] : []
   }
+  const toggle = (id: UUID) => setWho((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
 
   // Avant l'affichage : la feuille s'ouvre déjà remplie
   useLayoutEffect(() => {
     if (appointment) {
       setProspectId(appointment.task.prospect_id ?? ''); setDate(appointment.date); setTime(appointment.time)
-      setMinutes(appointment.minutes); setWho(appointment.task.assignee_id ?? ''); setNotes(appointment.notes)
+      setMinutes(appointment.minutes); setWho(appointment.team); setNotes(appointment.notes)
     } else if (draft) {
       setProspectId(draft.prospectId ?? ''); setDate(draft.date); setTime(draft.time); setMinutes(60); setNotes('')
       setWho(defaultWho(db.prospects.find((p) => p.id === draft.prospectId)))
@@ -100,13 +102,13 @@ export function AppointmentSheet({ draft, appointment, onClose }: { draft: Appoi
 
   const prospect = db.prospects.find((p) => p.id === prospectId)
   const site = db.projects.find((p) => p.prospect_id === prospectId && !p.archived)
-  const ready = !!prospect && !!who && !!date && !saving
+  const ready = !!prospect && who.length > 0 && !!date && !saving
   const timeOptions = TIMES.includes(time) ? TIMES : [...TIMES, time].sort((a, b) => toMinutes(a) - toMinutes(b))
 
   async function save() {
-    if (!prospect || !who) return
+    if (!prospect || !who.length) return
     setSaving(true)
-    const input = { date, time, minutes, assignee_id: who, notes }
+    const input = { date, time, minutes, team: who, notes }
     const ok = appointment ? await updateAppointment(appointment.task.id, input) : await createAppointment(prospect, input)
     setSaving(false)
     if (ok) { toast(appointment ? 'Rendez-vous modifié' : 'Rendez-vous planifié', 'success'); onClose() }
@@ -135,7 +137,7 @@ export function AppointmentSheet({ draft, appointment, onClose }: { draft: Appoi
           <section className="flex flex-col gap-3">
             {!appointment && !draft?.prospectId && (
               <Field label="Client *">
-                <Select value={prospectId} onChange={(e) => { setProspectId(e.target.value); setWho(who || defaultWho(db.prospects.find((p) => p.id === e.target.value))) }}>
+                <Select value={prospectId} onChange={(e) => { setProspectId(e.target.value); setWho(who.length ? who : defaultWho(db.prospects.find((p) => p.id === e.target.value))) }}>
                   <option value="">Choisir un client</option>
                   {choices.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </Select>
@@ -154,15 +156,18 @@ export function AppointmentSheet({ draft, appointment, onClose }: { draft: Appoi
               </div>
             </div>
             <div>
-              <span className="field-label">Quel commercial y va ? *</span>
-              <div role="radiogroup" aria-label="Commercial" className="flex flex-wrap gap-2">
-                {team.map((m) => (
-                  <button key={m.id} type="button" role="radio" aria-checked={who === m.id} onClick={() => setWho(m.id)} className={cx('chip h-11 pl-1.5', who === m.id && 'chip-on')}>
-                    <Avatar profile={m} size={28} />{m.first_name}
-                  </button>
-                ))}
+              <span className="field-label">Qui y va ? * <span className="font-normal text-faint">Plusieurs possibles</span></span>
+              <div role="group" aria-label="Commerciaux" className="flex flex-wrap gap-2">
+                {team.map((m) => {
+                  const on = who.includes(m.id)
+                  return (
+                    <button key={m.id} type="button" aria-pressed={on} onClick={() => toggle(m.id)} className={cx('chip h-11 pl-1.5', on && 'chip-on')}>
+                      <Avatar profile={m} size={28} />{m.first_name}{on && <Check size={15} strokeWidth={2.5} className="-ml-0.5" />}
+                    </button>
+                  )
+                })}
               </div>
-              {!who && <p className="text-[12.5px] font-semibold text-copper-ink mt-1.5">Choisissez qui va voir ce client.</p>}
+              {!who.length && <p className="text-[12.5px] font-semibold text-copper-ink mt-1.5">Choisissez qui va voir ce client.</p>}
             </div>
             <Field label="Notes pour le commercial"><TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex. Passer après le service du midi" /></Field>
           </section>

@@ -9,12 +9,14 @@ import { Avatar, cx } from '../../components/ui'
 import { DueChip } from '../../components/bits'
 
 export const TaskRow = memo(function TaskRow({ task, onOpen, showLinks = true }: { task: Task; onOpen: (t: Task) => void; showLinks?: boolean }) {
-  const assignee = useStore((s) => s.db.profiles.find((p) => p.id === task.assignee_id))
+  const profiles = useStore((s) => s.db.profiles)
   const prospect = useStore((s) => (task.prospect_id ? s.db.prospects.find((p) => p.id === task.prospect_id) : undefined))
   const project = useStore((s) => (task.project_id ? s.db.projects.find((p) => p.id === task.project_id) : undefined))
   const done = task.status === 'termine'
   const nav = useNavigate()
   const appointment = appointmentOf(task)
+  // Un rendez-vous montre tous ceux qui y vont
+  const people = (appointment ? appointment.team : [task.assignee_id]).flatMap((id) => profiles.find((p) => p.id === id) ?? [])
   // coche instantanée, même pendant l'enregistrement
   const [checked, setChecked] = useState(done)
   useEffect(() => setChecked(done), [done])
@@ -44,7 +46,7 @@ export const TaskRow = memo(function TaskRow({ task, onOpen, showLinks = true }:
           {showLinks && project && !prospect && <span className="inline-flex items-center gap-1 text-[12.5px] text-muted truncate max-w-[180px]"><FolderKanban size={13} />{project.name}</span>}
         </div>
       </button>
-      <span className="pt-3.5">{assignee && <Avatar profile={assignee} size={24} />}</span>
+      <span className="pt-3.5 flex -space-x-1.5">{people.map((p) => <Avatar key={p.id} profile={p} size={24} ring={people.length > 1} />)}</span>
     </div>
   )
 })

@@ -131,25 +131,26 @@ export function createTask(input: Partial<Task>) {
 export const updateTask = (id: UUID, patch: Partial<Task>) => updateRow('tasks', id, patch)
 
 // ———————————————————————— Rendez-vous ————————————————————————
-export interface AppointmentInput { date: string; time: string; minutes: number; assignee_id: UUID; notes: string }
+/** team : les commerciaux qui y vont, le premier est le responsable de la tâche. */
+export interface AppointmentInput { date: string; time: string; minutes: number; team: UUID[]; notes: string }
 
 export function createAppointment(p: Prospect, a: AppointmentInput) {
   const site = db().projects.find((x) => x.prospect_id === p.id && !x.archived)
   return createTask({
     title: `RDV ${p.name}`,
-    description: appointmentDescription(a.time, a.minutes, a.notes),
+    description: appointmentDescription(a.time, a.minutes, a.notes, a.team.slice(1)),
     due_date: a.date,
-    assignee_id: a.assignee_id,
+    assignee_id: a.team[0],
     prospect_id: p.id,
     project_id: site?.id ?? null,
   })
 }
 
 export const updateAppointment = (id: UUID, a: AppointmentInput) =>
-  updateTask(id, { due_date: a.date, assignee_id: a.assignee_id, description: appointmentDescription(a.time, a.minutes, a.notes) })
+  updateTask(id, { due_date: a.date, assignee_id: a.team[0], description: appointmentDescription(a.time, a.minutes, a.notes, a.team.slice(1)) })
 
 export const moveAppointment = (a: Appointment, date: string, time: string) =>
-  updateTask(a.task.id, { due_date: date, description: appointmentDescription(time, a.minutes, a.notes) })
+  updateTask(a.task.id, { due_date: date, description: appointmentDescription(time, a.minutes, a.notes, a.team.filter((id) => id !== a.task.assignee_id)) })
 export const deleteTask = (id: UUID) => deleteRow('tasks', id)
 
 export async function toggleTask(task: Task) {

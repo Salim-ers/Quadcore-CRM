@@ -22,6 +22,8 @@ const startDrag = (e: DragEvent, payload: string) => {
   e.dataTransfer.effectAllowed = 'move'
 }
 
+const peopleOf = (a: Appointment, byProfile: Map<string, Profile>) => a.team.flatMap((id) => byProfile.get(id) ?? [])
+
 /** Place les rendez-vous qui se chevauchent côte à côte, pour que chacun reste lisible. */
 function layoutDay(items: Appointment[]) {
   const sorted = [...items].sort((a, b) => toMinutes(a.time) - toMinutes(b.time))
@@ -41,11 +43,13 @@ function layoutDay(items: Appointment[]) {
   return placed
 }
 
-function EventCard({ a, owner, client, style, compact, onOpen }: { a: Appointment; owner?: Profile; client?: Prospect; style?: React.CSSProperties; compact?: boolean; onOpen: () => void }) {
-  const color = owner?.color ?? '#9C948A'
+function EventCard({ a, people, client, style, compact, onOpen }: { a: Appointment; people: Profile[]; client?: Prospect; style?: React.CSSProperties; compact?: boolean; onOpen: () => void }) {
+  const color = people[0]?.color ?? '#9C948A'
   const late = !a.done && a.date < todayStr()
+  const names = people.map((p) => p.first_name).join(', ')
+  const label = `${a.time}, ${client?.name ?? a.task.title}${names ? `, ${names}` : ''}`
   return (
-    <div role="button" tabIndex={0} draggable aria-label={`${a.time}, ${client?.name ?? a.task.title}${owner ? `, ${owner.first_name}` : ''}`} title={`${a.time}, ${client?.name ?? a.task.title}${owner ? `, ${owner.first_name}` : ''}`}
+    <div role="button" tabIndex={0} draggable aria-label={label} title={label}
       onDragStart={(e) => startDrag(e, `rdv:${a.task.id}`)}
       onClick={(e) => { e.stopPropagation(); onOpen() }}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen() } }}
@@ -55,7 +59,7 @@ function EventCard({ a, owner, client, style, compact, onOpen }: { a: Appointmen
       {compact ? <span className={cx(a.done && 'line-through')}>{client?.name}</span> : (
         <>
           <span className={cx('block font-semibold truncate', a.done && 'line-through')}>{client?.name ?? a.task.title}</span>
-          {a.minutes >= 60 && owner && <span className="block text-muted truncate">{owner.first_name}</span>}
+          {a.minutes >= 60 && names && <span className="block text-muted truncate">{names}</span>}
         </>
       )}
     </div>
@@ -119,7 +123,7 @@ function TimeGrid({ days, items, byProfile, byClient, now, onSlot, onOpen, onDro
                   const p = places.get(a.task.id)!
                   const top = Math.max(0, ((toMinutes(a.time) - START) / STEP) * SLOT_H)
                   return (
-                    <EventCard key={a.task.id} a={a} owner={byProfile.get(a.task.assignee_id ?? '')} client={byClient.get(a.task.prospect_id ?? '')} onOpen={() => onOpen(a)}
+                    <EventCard key={a.task.id} a={a} people={peopleOf(a, byProfile)} client={byClient.get(a.task.prospect_id ?? '')} onOpen={() => onOpen(a)}
                       style={{ top: top + 1, height: Math.max(SLOT_H - 2, (a.minutes / STEP) * SLOT_H - 2), left: `calc(${(p.col / p.cols) * 100}% + 1px)`, width: `calc(${100 / p.cols}% - 3px)` }} />
                   )
                 })}
@@ -151,7 +155,7 @@ function MonthGrid({ anchor, items, byProfile, byClient, onDay, onOpen, onDropOn
             className={cx('min-h-[76px] lg:min-h-[104px] min-w-0 p-1 border-r border-b border-line text-left align-top cursor-pointer transition-colors hover:bg-sunken/70', !sameMonth(d, anchor) && 'bg-sunken/40', over === d && '!bg-copper/25')}>
             <span className={cx('inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-full text-[12px] font-bold', d === today ? 'bg-copper text-onCopper' : !sameMonth(d, anchor) && 'text-faint')}>{dayShort(d).number}</span>
             <div className="flex flex-col gap-0.5 mt-0.5">
-              {list.slice(0, 3).map((a) => <EventCard key={a.task.id} compact a={a} owner={byProfile.get(a.task.assignee_id ?? '')} client={byClient.get(a.task.prospect_id ?? '')} onOpen={() => onOpen(a)} />)}
+              {list.slice(0, 3).map((a) => <EventCard key={a.task.id} compact a={a} people={peopleOf(a, byProfile)} client={byClient.get(a.task.prospect_id ?? '')} onOpen={() => onOpen(a)} />)}
               {list.length > 3 && <span className="text-[11px] font-semibold text-muted px-1">+{list.length - 3}</span>}
             </div>
           </div>
@@ -237,7 +241,7 @@ export function CalendarPage() {
   const byProfile = useMemo(() => new Map(db.profiles.map((p) => [p.id, p])), [db.profiles])
   const byClient = useMemo(() => new Map(db.prospects.map((p) => [p.id, p])), [db.prospects])
   const everything = useMemo(() => allAppointments(db), [db])
-  const items = useMemo(() => (who === 'tous' ? everything : everything.filter((a) => a.task.assignee_id === who)), [everything, who])
+  const items = useMemo(() => (who === 'tous' ? everything : everything.filter((a) => a.team.includes(who))), [everything, who])
   const waiting = useMemo(() => toSchedule(db), [db])
   const placing = placingId ? byClient.get(placingId) ?? null : null
   const opened = openId ? everything.find((a) => a.task.id === openId) ?? null : null

@@ -5,6 +5,7 @@ import { Page, PageHeader } from '../../components/Shell'
 import { Chips, Empty, cx } from '../../components/ui'
 import { useStore } from '../../data/store'
 import { filterTasks, type TaskView } from '../../lib/derive'
+import { isAssigned } from '../../lib/appointments'
 import { TaskRow } from './TaskRow'
 import { TaskSheet } from './TaskSheet'
 import type { Task } from '../../lib/types'
@@ -28,10 +29,10 @@ export function TasksPage() {
   const userId = useStore((s) => s.userId)
   const [scope, setScope] = useState<'me' | 'team'>('me')
 
-  const scoped = useMemo(() => (scope === 'me' && view !== 'mine' ? tasks.filter((t) => t.assignee_id === userId) : tasks), [tasks, scope, userId, view])
+  const scoped = useMemo(() => (scope === 'me' && view !== 'mine' ? tasks.filter((t) => isAssigned(t, userId)) : tasks), [tasks, scope, userId, view])
   const counts = useMemo(() => Object.fromEntries(VIEWS.map((v) => [v.value, filterTasks(scoped, v.value, userId, false).length])), [scoped, userId])
   const list = useMemo(() => filterTasks(scoped, view, userId, showDone), [scoped, view, userId, showDone])
-  const doneToday = tasks.filter((t) => t.status === 'termine' && t.completed_at?.slice(0, 10) === todayStr() && t.assignee_id === userId).length
+  const doneToday = tasks.filter((t) => t.status === 'termine' && t.completed_at?.slice(0, 10) === todayStr() && isAssigned(t, userId)).length
 
   // regroupement par échéance pour les vues longues
   const groups = useMemo(() => {
